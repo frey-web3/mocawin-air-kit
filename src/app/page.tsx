@@ -333,6 +333,8 @@ export default function PredictionMarket() {
             prediction={selectedPrediction}
             onClose={closeTradeCard}
             theme={theme}
+            isLoggedIn={isLoggedIn} // <-- ADDED PROP
+            handleLogin={handleLogin} // <-- ADDED PROP
         />
       )}
 
