@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Prediction Market Demo: Powered by Air Kit
 
-## Getting Started
+A decentralized prediction market demo showcasing seamless cross-platform user authentication and a unique, rewarding **Winpoint (WP)** system integrated via the MOCA Network's **Air Kit**.
 
-First, run the development server:
+## ✨ Key Features & Unique Selling Proposition (USP)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+This demo highlights a novel approach to user engagement and digital ownership in the prediction market space, leveraging the power of Air Kit for a superior user experience.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 1. 🌐 Air Kit: Seamless, Cross-Platform Login
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The core of our platform relies on **Air Kit** for user authentication, providing a universal, non-custodial login solution.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+* **Universal Credentials:** Users log in using their Air Kit-linked credentials, ensuring a consistent identity across all connected platforms.
+* **Winpoint (WP) Utility:** The user's accumulated **Winpoint (WP)** data is tied to their Air Kit identity, making it inherently cross-platform and usable for:
+    * **Credentials/Status**
+    * **Airdrops**
+    * **Rewards & Loyalty**
 
-## Learn More
+### 2. 🏆 The Winpoint (WP) Advantage: Guaranteed Reward
 
-To learn more about Next.js, take a look at the following resources:
+We are redefining the prediction market by guaranteeing a reward for participation, regardless of the outcome.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+* **Guaranteed Winpoint:** Every resolved prediction, whether you **win or lose** your trade, grants you a baseline amount of **Winpoint (WP)**. This unique mechanism encourages active participation by reducing the fear of loss.
+* **Loyalty Utility:** WP is a verifiable measure of loyalty and activity that qualifies users for future rewards and incentives.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3. ⚡ Exclusive Air Kit Login Bonus
 
-## Deploy on Vercel
+To incentivize the use of the Air Kit login solution, we offer an immediate benefit:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+* **+10% WP Bonus:** Users who log in via **Air Kit** and successfully claim a resolved prediction will automatically receive a **10% bonus on their earned Winpoint (WP)**. This bonus is prominently displayed in the claim modal (`ClaimCard.tsx`).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+***
+
+## 🛠️ Tech Stack
+
+* **Framework:** Next.js (App Router)
+* **Language:** TypeScript / React
+* **Styling:** Tailwind CSS
+* **Authentication & Identity:** `@mocanetwork/airkit`
+
+***
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+* Node.js (v18+)
+* npm or yarn
+
+### Installation
+
+1.  Clone the repository:
+    ```bash
+    git clone [YOUR_REPO_URL]
+    cd prediction-market-demo
+    ```
+
+2.  Install dependencies:
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
+
+3.  Configure Air Kit Environment Variable:
+    Create a file named `.env.local` in the root directory and set your Air Kit Partner ID. This is required for the `AirService` instance.
+
+    ```
+    # Obtain your Partner ID from the MOCA Network developer portal
+    NEXT_PUBLIC_PARTNER_ID="YOUR_PARTNER_ID" 
+    ```
+
+4.  Run the development server:
+    ```bash
+    npm run dev
+    # or
+    yarn dev
+    ```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the application. Click **"Login to Trade"** on any market to initiate the **Air Kit** authentication flow.
