@@ -10,8 +10,10 @@ interface ClaimCardProps {
   theme: "light" | "dark";
   onClaim: () => void;
   onClose: () => void;
-  // --- NEW: claimType prop ---
   claimType: 'win' | 'loss';
+  predictionId: number;
+  totalAmountTraded: number;
+  winningSide: 'Yes' | 'No';
 }
 
 export default function ClaimCard({
@@ -21,22 +23,56 @@ export default function ClaimCard({
   theme,
   onClaim,
   onClose,
-  claimType, // Destructure new prop
+  claimType,
+  predictionId,
+  totalAmountTraded,
+  winningSide,
 }: ClaimCardProps) {
   const [processing, setProcessing] = useState(false);
 
   const handleConfirm = async () => {
     setProcessing(true);
     await new Promise((r) => setTimeout(r, 600));
+    
+    // --- SAVE TO CLAIM HISTORY IN LOCALSTORAGE ---
+    try {
+      const historyString = localStorage.getItem('claimHistory');
+      const history = historyString ? JSON.parse(historyString) : [];
+      
+      const newClaim = {
+        id: `claim_${Date.now()}_${predictionId}`,
+        predictionId: predictionId,
+        title: title,
+        payoutUSD: payoutUSD,
+        winPoints: winPoints,
+        claimType: claimType,
+        claimedAt: new Date().toISOString(),
+        totalAmountTraded: totalAmountTraded,
+        winningSide: winningSide,
+      };
+      
+      history.push(newClaim);
+      localStorage.setItem('claimHistory', JSON.stringify(history));
+      console.log('Claim saved to history:', newClaim);
+    } catch (e) {
+      console.error("Failed to save claim history:", e);
+    }
+    
     onClaim();
     setProcessing(false);
     onClose();
   };
 
-  const bg = theme === "dark" ? "bg-black border-white/10" : "bg-white border-black/10";
-  const text = theme === "dark" ? "text-white" : "text-black";
-  
-  // --- NEW: Conditional styling and text ---
+  // --- Border + Background (same as ClaimDetailCard) ---
+  const containerClass = `
+    w-full max-w-md rounded-2xl p-6 shadow-2xl
+    ${theme === "dark" 
+      ? "bg-black border border-white/10 text-white" 
+      : "bg-white border border-black/10 text-black"
+    }
+  `.trim();
+
+  // --- Conditional styling and text ---
   const headerText = claimType === 'win' ? "Claim Your Winnings" : "Clear Resolved Market";
   const payoutColor = claimType === 'win' ? "text-green-500" : "text-gray-500/80";
   const buttonBg = claimType === 'win' 
@@ -47,8 +83,8 @@ export default function ClaimCard({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl ${bg} ${text}`}>
-        {/* Header (UPDATED) */}
+      <div className={containerClass}>
+        {/* Header */}
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-xl font-bold">{headerText}</h3>
           <button onClick={onClose} className="opacity-70 hover:opacity-100">
@@ -64,7 +100,7 @@ export default function ClaimCard({
           </button>
         </div>
         
-        {/* NEW: Conditional description for loss */}
+        {/* Conditional description for loss */}
         {claimType === 'loss' && (
             <p className="mb-4 text-sm text-red-400/80 font-medium">
                 You will not receive a payout, but you will still receive WinPoints for participating in the market.
@@ -73,7 +109,7 @@ export default function ClaimCard({
 
         <p className="mb-4">{title}</p>
 
-        {/* Payout Summary (UPDATED) */}
+        {/* Payout Summary */}
         <div className={`p-4 rounded-lg ${theme === "dark" ? "bg-white/5" : "bg-black/5"}`}>
           <div className="flex justify-between text-lg font-semibold">
             <span>Total Payout (USD)</span>
@@ -85,7 +121,7 @@ export default function ClaimCard({
             <span className="text-yellow-500">{winPoints} WP</span>
           </div>
 
-          {/* MVP FEATURE: AIR KIT BONUS – STAND OUT (UPDATED TEXT) */}
+          {/* MVP FEATURE: AIR KIT BONUS */}
           <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-indigo-600/20 border border-purple-500/50 shadow-lg animate-pulse-slow">
             <div className="flex items-center gap-2.5">
               {/* Air Kit Logo Badge */}
@@ -108,7 +144,7 @@ export default function ClaimCard({
           </div>
         </div>
 
-        {/* Buttons (UPDATED) */}
+        {/* Buttons */}
         <div className="mt-6 flex gap-3">
           <button
             onClick={onClose}

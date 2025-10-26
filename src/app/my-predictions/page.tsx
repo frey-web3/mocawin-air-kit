@@ -106,7 +106,7 @@ export default function MyPredictions() {
         title?: string;
         payout?: number;
         wp?: number;
-        claimType: 'win' | 'loss'; // This state must be sent to ClaimCard
+        claimType: 'win' | 'loss';
     }>({ open: false, claimType: 'win' }); 
 
     const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
@@ -295,7 +295,7 @@ export default function MyPredictions() {
         });
     };
 
-    // --- Confirm Claim ---
+    // --- Confirm Claim (Simplified - ClaimCard handles saving) ---
     const confirmClaim = () => {
         if (!claimModal.predictionId) return;
 
@@ -344,7 +344,7 @@ export default function MyPredictions() {
                 setSearchQuery={setSearchQuery}
             />
 
-            <main className="px-4 sm:px-8 w-full mx-auto pt-2 md:pb-8 pb-4 flex-grow">
+            <main className="px-4 sm:px-8 w-full mx-auto py-4 flex-grow">
                 <div className="max-w-7xl mx-auto"> 
                     <h1 className="text-3xl font-bold mb-4 flex items-center">
                         <a href="/" className="hover:opacity-60 transition-opacity"></a>
@@ -444,7 +444,7 @@ export default function MyPredictions() {
                 )}
             </main>
 
-            {/* --- CLAIM MODAL --- */}
+            {/* --- CLAIM MODAL (UPDATED WITH NEW PROPS) --- */}
             {claimModal.open && (
                 <ClaimCard
                     title={claimModal.title!}
@@ -453,7 +453,15 @@ export default function MyPredictions() {
                     theme={theme}
                     onClose={() => setClaimModal({ open: false, claimType: 'win' })} 
                     onClaim={confirmClaim}
-                    claimType={claimModal.claimType} // Passing claimType
+                    claimType={claimModal.claimType}
+                    // --- NEW PROPS FOR CLAIM HISTORY ---
+                    predictionId={claimModal.predictionId!}
+                    totalAmountTraded={
+                        userPredictions.find(p => p.id === claimModal.predictionId)?.totalAmountTraded || 0
+                    }
+                    winningSide={
+                        userPredictions.find(p => p.id === claimModal.predictionId)?.winningSide || 'Yes'
+                    }
                 />
             )}
 

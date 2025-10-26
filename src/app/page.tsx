@@ -226,7 +226,7 @@ export default function PredictionMarket() {
       />
 
       {/* ---------- MAIN ---------- */}
-      <main className="pt-8 pb-8 px-4 sm:px-8 max-w-7xl mx-auto"> 
+      <main className="py-4 px-4 sm:px-8 max-w-7xl mx-auto"> 
         {/* ----- Banner Slider ----- */}
         <div className="relative mb-12 rounded-2xl overflow-hidden h-64 sm:h-80">
           {banners.map((b, i) => (

@@ -210,7 +210,7 @@ export default function MarketPage() {
                 setSearchQuery={setSearchQuery}
             />
 
-            <main className="px-4 sm:px-8 w-full mx-auto pt-8 md:pb-8 pb-4 flex-grow">
+            <main className="px-4 sm:px-8 w-full mx-auto py-4 flex-grow">
                 <div className="max-w-7xl mx-auto mb-8"> 
                     <h1 className="text-3xl font-bold mb-2">
                         Market Overview

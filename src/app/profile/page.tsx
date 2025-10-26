@@ -1,0 +1,398 @@
+// app/profile/page.tsx
+"use client";
+
+import { useState, useEffect } from 'react';
+import Navbar from "../../components/Navbar";
+import { Trophy, TrendingUp, DollarSign, Award, Calendar, CheckCircle, XCircle } from 'lucide-react';
+
+// --- AIR KIT IMPORTS ---
+import {
+    AirService,
+    BUILD_ENV,
+    type AirEventListener,
+    type BUILD_ENV_TYPE,
+} from "@mocanetwork/airkit";
+
+// --- AIR KIT SERVICE INSTANCE ---
+const PARTNER_ID = process.env.NEXT_PUBLIC_PARTNER_ID || "YOUR_PARTNER_ID";
+
+if (!PARTNER_ID || PARTNER_ID === "YOUR_PARTNER_ID") {
+  console.warn("Warning: No valid Partner ID provided. Set NEXT_PUBLIC_PARTNER_ID in .env.local");
+}
+
+const airService = new AirService({ partnerId: PARTNER_ID });
+
+// --- Static Data for Navbar ---
+const predictions = [
+    { id: 1, title: "Bitcoin will reach $130k by end of Q4 2025", yes: 65, no: 35, volume: "1.2M" },
+    { id: 2, title: "AI will pass Turing test with a new framework", yes: 45, no: 55, volume: "850K" },
+    { id: 3, title: "Tesla stock closes above $500 next month", yes: 58, no: 42, volume: "2.1M" },
+];
+
+const confirmedNews = [
+    "Confirmed: Bitcoin REJECTED $130k this quarter.",
+    "Resolved: Mars Landing prediction will be settled next week.",
+    "Winner Declared: Check the World Cup bet results!",
+];
+
+export interface ClaimHistory {
+  id: string;
+  predictionId: number;
+  title: string;
+  payoutUSD: number;
+  winPoints: number;
+  claimType: 'win' | 'loss';
+  claimedAt: string;
+  totalAmountTraded: number;
+  winningSide: 'Yes' | 'No';
+}
+
+// Import the new component
+import ClaimDetailCard from '../../components/ClaimDetailCard';
+
+export default function ProfilePage() {
+  /* ---------- AirService state ---------- */
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userAddress, setUserAddress] = useState<string | null>(null);
+  const [currentEnv] = useState<BUILD_ENV_TYPE>(BUILD_ENV.SANDBOX);
+
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [claimHistory, setClaimHistory] = useState<ClaimHistory[]>([]);
+  const [selectedClaim, setSelectedClaim] = useState<ClaimHistory | null>(null);
+  const [activeTab] = useState("Profile");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+
+  /* -------------------------------------------------
+      1. AirService Initialization & Auth Logic
+  ------------------------------------------------- */
+  const initAirService = async () => {
+      try {
+          await airService.init({
+              buildEnv: currentEnv,
+              enableLogging: true,
+              skipRehydration: false, 
+          });
+          setIsInitialized(true);
+
+          if (airService.isLoggedIn && airService.loginResult?.abstractAccountAddress) {
+              setIsLoggedIn(true);
+              setUserAddress(airService.loginResult.abstractAccountAddress);
+          }
+      } catch (e) {
+          console.error("AirService init failed:", e);
+          setIsInitialized(true); 
+      }
+  };
+
+  useEffect(() => {
+      initAirService();
+  }, [currentEnv]); 
+
+  useEffect(() => {
+      if (!isInitialized) return;
+
+      const listener: AirEventListener = async (data) => {
+          if (data.event === "logged_in") {
+              setIsLoggedIn(true);
+              const addr = data.result.abstractAccountAddress;
+              if (addr) {
+                  setUserAddress(addr);
+              } else {
+                  const accounts = await airService.provider.request({
+                      method: "eth_accounts",
+                      params: [],
+                  });
+                  setUserAddress(Array.isArray(accounts) && accounts.length ? accounts[0] : null);
+              }
+          } else if (data.event === "logged_out") {
+              setIsLoggedIn(false);
+              setUserAddress(null);
+          }
+      };
+
+      airService.on(listener);
+
+      return () => {
+          airService.off(listener);
+      };
+  }, [isInitialized]);
+
+  const handleLogin = async () => {
+      if (!isInitialized || isLoggingIn) return;
+      setIsLoggingIn(true);
+      try {
+          await airService.login(); 
+      } catch (e) {
+          console.error("Login error:", e);
+      } finally {
+          setIsLoggingIn(false);
+      }
+  };
+
+  const handleLogout = async () => {
+      try {
+          await airService.logout();
+      } catch (e) {
+          console.error("Logout error:", e);
+      }
+  };
+
+  // Initialize theme and load claim history
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setTheme(e.matches ? "dark" : "light");
+    setTheme(mql.matches ? "dark" : "light");
+    mql.addEventListener("change", handler);
+    
+    // Load claim history from localStorage
+    try {
+      const historyString = localStorage.getItem('claimHistory');
+      if (historyString) {
+        const parsedHistory = JSON.parse(historyString);
+        setClaimHistory(parsedHistory);
+        console.log('Loaded claim history:', parsedHistory);
+      }
+    } catch (e) {
+      console.error("Failed to load claim history:", e);
+    }
+
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  // Calculate statistics
+  const totalClaims = claimHistory.length;
+  const totalWins = claimHistory.filter(c => c.claimType === 'win').length;
+  const totalLosses = claimHistory.filter(c => c.claimType === 'loss').length;
+  const totalPayoutUSD = claimHistory.reduce((sum, c) => sum + c.payoutUSD, 0);
+  const totalWinPoints = claimHistory.reduce((sum, c) => sum + c.winPoints, 0);
+  const winRate = totalClaims > 0 ? ((totalWins / totalClaims) * 100).toFixed(1) : '0.0';
+
+  // UI Classes
+  const containerClass = theme === "dark" ? "bg-black text-white" : "bg-white text-black";
+  const cardClass = theme === "dark"
+    ? "bg-white/5 border border-white/10 hover:border-white/20"
+    : "bg-black/5 border border-black/10 hover:border-black/20";
+
+  return (
+    <div className={`min-h-screen ${containerClass} flex flex-col`}>
+      {/* -------------------- NAVBAR COMPONENT -------------------- */}
+      <Navbar
+          theme={theme}
+          toggleTheme={toggleTheme}
+          activeTab={activeTab} 
+          setActiveTab={() => {}} 
+          
+          // --- AIR KIT PROPS ---
+          isLoggedIn={isLoggedIn}
+          userAddress={userAddress}
+          handleLogin={handleLogin}
+          handleLogout={handleLogout}
+          isLoggingIn={isLoggingIn}
+          // --- END AIR KIT PROPS ---
+
+          predictions={predictions} 
+          confirmedNews={confirmedNews}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+      />
+
+      <main className="px-4 sm:px-8 py-4 max-w-7xl mx-auto flex-grow">
+        {/* Statistics Grid - MODIFIED grid-cols-1 to grid-cols-2 */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Total Claims */}
+          <div className={`p-6 rounded-xl ${cardClass} transition-all`}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-blue-500/20">
+                <Trophy className="w-5 h-5 text-blue-500" />
+              </div>
+              <span className="text-sm opacity-70">Total Claims</span>
+            </div>
+            <p className="text-3xl font-bold">{totalClaims}</p>
+          </div>
+
+          {/* Win Rate */}
+          <div className={`p-6 rounded-xl ${cardClass} transition-all`}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-green-500/20">
+                <TrendingUp className="w-5 h-5 text-green-500" />
+              </div>
+              <span className="text-sm opacity-70">Win Rate</span>
+            </div>
+            <p className="text-3xl font-bold text-green-500">{winRate}%</p>
+            <p className="text-xs opacity-60 mt-1">{totalWins}W / {totalLosses}L</p>
+          </div>
+
+          {/* Total Payout */}
+          <div className={`p-6 rounded-xl ${cardClass} transition-all`}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-yellow-500/20">
+                <DollarSign className="w-5 h-5 text-yellow-500" />
+              </div>
+              <span className="text-sm opacity-70">Total Payout</span>
+            </div>
+            <p className="text-3xl font-bold text-yellow-500">${totalPayoutUSD.toFixed(2)}</p>
+          </div>
+
+          {/* Total WinPoints */}
+          <div className={`p-6 rounded-xl ${cardClass} transition-all`}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-purple-500/20">
+                <Award className="w-5 h-5 text-purple-500" />
+              </div>
+              <span className="text-sm opacity-70">Total WinPoints</span>
+            </div>
+            <p className="text-3xl font-bold text-purple-500">{totalWinPoints} WP</p>
+          </div>
+        </div>
+
+        {/* Claim History Section */}
+        <div>
+        <h2 className="text-2xl font-bold mb-4">Claim History</h2>
+        
+        {claimHistory.length === 0 ? (
+            <div className={`p-10 text-center rounded-xl border border-dashed ${
+            theme === "dark" ? "border-white/20" : "border-black/20"
+            }`}>
+            <Trophy className="w-16 h-16 mx-auto mb-4 opacity-30" />
+            <p className="text-xl opacity-80">No claim history yet</p>
+            <p className="mt-2 opacity-60">Your claimed predictions will appear here</p>
+            <a 
+                href="/my-predictions" 
+                className={`inline-block mt-4 px-6 py-2 rounded-lg font-medium transition-colors ${
+                theme === "dark" 
+                    ? "bg-white/10 hover:bg-white/20" 
+                    : "bg-black/10 hover:bg-black/20"
+                }`}
+            >
+                Go to My Predictions
+            </a>
+            </div>
+        ) : (
+            <div className="space-y-4">
+            {claimHistory
+                .sort((a, b) => new Date(b.claimedAt).getTime() - new Date(a.claimedAt).getTime())
+                .map((claim) => (
+                <div
+                    key={claim.id}
+                    onClick={() => setSelectedClaim(claim)}
+                    className={`p-6 rounded-xl cursor-pointer transition-all ${cardClass} group`}
+                >
+                    {/* Updated Flex Structure for Mobile Reordering */}
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-6">
+                    {/* Left Side: Title, Status, Traded + Date (Always on top/left) */}
+                    <div className="flex-1 min-w-0 order-1"> 
+                        <div className="flex items-center gap-2 mb-2">
+                        {claim.claimType === 'win' ? (
+                            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                        ) : (
+                            <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                        )}
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            claim.claimType === 'win'
+                            ? 'bg-green-500/20 text-green-500'
+                            : 'bg-red-500/20 text-red-500'
+                        }`}>
+                            {claim.claimType === 'win' ? 'WIN' : 'LOSS'}
+                        </span>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            theme === "dark" ? 'bg-white/10' : 'bg-black/10'
+                        }`}>
+                            {claim.winningSide}
+                        </span>
+                        </div>
+                        
+                        <h3 className="font-semibold text-lg mb-3 pr-4 line-clamp-2">
+                        {claim.title}
+                        </h3>
+                        
+                        {/* Traded + Date Row */}
+                        <div className="flex items-center gap-4 text-sm opacity-70">
+                        <div className="flex items-center gap-1.5">
+                            <DollarSign className="w-4 h-4" />
+                            <span>Traded: ${claim.totalAmountTraded.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Calendar className="w-4 h-4" />
+                            <span>
+                            {new Date(claim.claimedAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
+                            </span>
+                        </div>
+                        </div>
+                    </div>
+
+                    {/* Right Side: Payout & WP (Moved to bottom on mobile) */}
+                    <div className="w-full sm:w-auto text-left sm:text-right space-y-1 pt-3 sm:pt-0 border-t border-dashed sm:border-t-0 order-3 sm:order-2">
+                        <div className="flex gap-4 sm:block sm:space-y-1"> 
+                            {/* Payout */}
+                            <div className="sm:mb-2">
+                                <span className="block text-xs opacity-70 sm:mb-0">Payout</span>
+                                <div className={`text-2xl font-bold transition-colors ${
+                                claim.claimType === 'win' 
+                                    ? 'text-green-500 group-hover:text-green-400' 
+                                    : 'text-gray-500'
+                                }`}>
+                                ${claim.payoutUSD.toFixed(2)}
+                                </div>
+                            </div>
+
+                            {/* WinPoints */}
+                            <div className="sm:mt-2">
+                                <span className="block text-xs opacity-70 sm:mb-0">WinPoints</span>
+                                <div className="flex items-center gap-1.5 justify-start sm:justify-end">
+                                <Award className="w-5 h-5 text-purple-500" />
+                                <span className="text-lg font-bold text-purple-500">
+                                    {claim.winPoints} WP
+                                </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                ))}
+            </div>
+        )}
+        </div>
+      </main>
+
+      {/* Render Claim Detail Card */}
+      {selectedClaim && (
+        <ClaimDetailCard
+          claim={selectedClaim}
+          theme={theme}
+          onClose={() => setSelectedClaim(null)}
+        />
+      )}
+
+      {/* Footer */}
+      <footer className={`py-4 px-4 sm:px-8 border-t ${
+        theme === "dark" 
+          ? "bg-black text-white border-white/10" 
+          : "bg-white text-black border-black/10"
+      }`}>
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-sm gap-2">
+          <p className="order-1 sm:order-none">© 2025 Prediction Market</p>
+          <div className="flex gap-4 order-3 sm:order-none">
+            <a href="#" className="hover:opacity-80">Twitter</a>
+            <a href="#" className="hover:opacity-80">Discord</a>
+            <a href="#" className="hover:opacity-80">Telegram</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
