@@ -77,4 +77,8 @@ To incentivize the use of the Air Kit login solution, we offer an immediate bene
     yarn dev
     ```
 
+<<<<<<< HEAD
 Open [http://localhost:3000](http://localhost:3000) in your browser to view the application. Click **"Login to Trade"** on any market to initiate the **Air Kit** authentication flow.
+=======
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the application. Click **"Login to Trade"** on any market to initiate the **Air Kit** authentication flow.
+>>>>>>> 9b3417654e1c59e333ecedc62236046e01bc3e52
