@@ -46,7 +46,6 @@ if (!PARTNER_ID || PARTNER_ID === "YOUR_PARTNER_ID") {
 const airService = new AirService({ partnerId: PARTNER_ID });
 
 // --- Static Data for Navbar ---
-// ... (predictions and confirmedNews remain unchanged) ...
 const predictions = [
     { id: 1, title: "Bitcoin will reach $130k by end of Q4 2025", yes: 65, no: 35, volume: "1.2M" },
     { id: 2, title: "AI will pass Turing test with a new framework", yes: 45, no: 55, volume: "850K" },
@@ -74,8 +73,8 @@ export interface ClaimHistory {
 // Import the new component (assuming this component exists)
 import ClaimDetailCard from '../../components/ClaimDetailCard';
 
-// --- NEW COMPONENT FOR USER MANAGEMENT TAB ---
-interface UserManagementProps {
+// --- NEW COMPONENT FOR USER MANAGEMENT TAB (RENAMED) ---
+interface AccountDetailsProps {
     theme: "light" | "dark";
     airService: AirService;
     isLoggedIn: boolean;
@@ -83,7 +82,7 @@ interface UserManagementProps {
     handleLogout: () => Promise<void>; // Added handleLogout prop
 }
 
-const UserManagementContent: React.FC<UserManagementProps> = ({ theme, airService, isLoggedIn, userAddress, handleLogout }) => {
+const AccountDetailsContent: React.FC<AccountDetailsProps> = ({ theme, airService, isLoggedIn, userAddress, handleLogout }) => {
     const [userInfo, setUserInfo] = useState<AirUserDetails | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isMfaSettingUp, setIsMfaSettingUp] = useState(false); // New state for MFA setup
@@ -129,7 +128,7 @@ const UserManagementContent: React.FC<UserManagementProps> = ({ theme, airServic
     };
 
     const handleSetupMfa = async () => {
-        if (!airService || isMfaSettingUp || !userInfo || userInfo.user.isMFASetup) return;
+        if (!airService || isMfaSettingUp || !userInfo || !userInfo.user.abstractAccountAddress) return;
 
         setIsMfaSettingUp(true);
         setError(null);
@@ -137,8 +136,9 @@ const UserManagementContent: React.FC<UserManagementProps> = ({ theme, airServic
             // @ts-ignore
             await airService.setupOrUpdateMfa();
             
-            // Re-fetch user info after successful setup to update the status
-            await fetchUserInfo(); 
+            // --- MODIFIED: Reload after successful MFA setup/update ---
+            window.location.reload(); 
+            // -----------------------------------------------------------
 
         } catch (e) {
             console.error("MFA setup failed:", e);
@@ -152,8 +152,9 @@ const UserManagementContent: React.FC<UserManagementProps> = ({ theme, airServic
         return (
             <div className={`p-10 text-center rounded-xl border border-dashed ${theme === "dark" ? "border-white/20" : "border-black/20"}`}>
                 <Key className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                {/* UPDATED MESSAGE */}
                 <p className="text-xl opacity-80">Login Required</p>
-                <p className="mt-2 opacity-60">Please log in to view your User Management details.</p>
+                <p className="mt-2 opacity-60">Please log in to view your account details.</p>
             </div>
         );
     }
@@ -179,28 +180,35 @@ const UserManagementContent: React.FC<UserManagementProps> = ({ theme, airServic
     const isMfaActive = user.isMFASetup;
 
     // Helper to render detail rows
-    const DetailRow = ({ icon: Icon, label, value, colorClass = "text-inherit" }: { icon: React.ElementType, label: string, value: string | undefined | null, colorClass?: string }) => (
-        <div className="flex justify-between items-center py-3 border-b border-dashed last:border-b-0">
-            <div className="flex items-center gap-3">
+    const DetailRow = ({ icon: Icon, label, value, colorClass = "text-inherit", isAddress = false }: { icon: React.ElementType, label: string, value: string | undefined | null, colorClass?: string, isAddress?: boolean }) => (
+        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 border-b border-dashed last:border-b-0`}>
+            <div className={`flex items-center gap-3 ${isAddress ? 'mb-2 sm:mb-0' : ''}`}>
                 <Icon className={`w-5 h-5 opacity-70 flex-shrink-0 ${colorClass}`} />
                 <span className="font-medium opacity-80">{label}</span>
             </div>
-            {/* Display value, checking for null or undefined */}
-            <span className={`font-semibold text-right ${colorClass}`}>{value || "N/A"}</span>
+            <span className={`font-semibold text-left sm:text-right ${isAddress ? 'break-all sm:break-all' : 'flex-shrink-0'} ${colorClass}`}>
+                {value || "N/A"}
+            </span>
         </div>
     );
 
     return (
         <div className="space-y-6">
-            {/* ADDED UserCircle ICON HERE */}
+            {/* UPDATED TITLE: Same style as Claim History (now both use text-xl font-bold with icon) */}
             <h3 className="text-xl font-bold flex items-center gap-2">
-                <UserCircle className="w-6 h-6 text-amber-500" />
-                Account Details
+                <Settings className="w-6 h-6 text-amber-500" />
+                Account Settings
             </h3>
 
             {/* User Info Card */}
             <div className={`p-6 rounded-xl ${cardClass} transition-all`}>
-                <DetailRow icon={UserCircle} label="Abstract Account Address" value={user.abstractAccountAddress} colorClass="text-amber-500" />
+                <DetailRow 
+                    icon={UserCircle} 
+                    label="Abstract Account Address" 
+                    value={user.abstractAccountAddress} 
+                    colorClass="text-amber-500"
+                    isAddress={true} 
+                />
                 <DetailRow icon={Mail} label="Email" value={user.email} />
                 
                 {/* MFA STATUS ROW */}
@@ -215,7 +223,7 @@ const UserManagementContent: React.FC<UserManagementProps> = ({ theme, airServic
                         </span>
                         {!isMfaActive && (
                             <button
-                                onClick={handleSetupMfa}
+                                onClick={handleSetupMfa} // Calls handleSetupMfa
                                 disabled={isMfaSettingUp || !user.abstractAccountAddress}
                                 className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                                     theme === 'dark' 
@@ -234,7 +242,7 @@ const UserManagementContent: React.FC<UserManagementProps> = ({ theme, airServic
                         )}
                         {isMfaActive && (
                              <button
-                                onClick={handleSetupMfa} // You can use setupOrUpdateMfa to update/re-setup MFA
+                                onClick={handleSetupMfa} // FIXED: Now explicitly calls handleSetupMfa to trigger update widget
                                 disabled={isMfaSettingUp}
                                 className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                                     theme === 'dark' 
@@ -287,7 +295,12 @@ const UserManagementContent: React.FC<UserManagementProps> = ({ theme, airServic
 
 // --- COMPONENT FOR REWARDS TAB (Original Content) ---
 // RENAMED TO ClaimHistoryContent
-const ClaimHistoryContent: React.FC<{ theme: "light" | "dark", claimHistory: ClaimHistory[] }> = ({ theme, claimHistory }) => {
+interface ClaimHistoryContentProps {
+    theme: "light" | "dark";
+    claimHistory: ClaimHistory[];
+    setSelectedClaim: (claim: ClaimHistory | null) => void; // ADDED PROP
+}
+const ClaimHistoryContent: React.FC<ClaimHistoryContentProps> = ({ theme, claimHistory, setSelectedClaim }) => {
     // Calculations remain here for encapsulation
     const totalClaims = claimHistory.length;
     const totalWins = claimHistory.filter(c => c.claimType === 'win').length;
@@ -352,7 +365,11 @@ const ClaimHistoryContent: React.FC<{ theme: "light" | "dark", claimHistory: Cla
 
             {/* Claim History Section */}
             <div>
-            <h2 className="text-2xl font-bold mb-4">Your Claim History</h2>
+            {/* MODIFIED: Updated header to match Account Details style and added icon */}
+            <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
+                <Trophy className="w-6 h-6 text-amber-500" />
+                Your Claim History
+            </h3>
             
             {claimHistory.length === 0 ? (
                 <div className={`p-10 text-center rounded-xl border border-dashed ${
@@ -379,7 +396,7 @@ const ClaimHistoryContent: React.FC<{ theme: "light" | "dark", claimHistory: Cla
                     .map((claim) => (
                     <div
                         key={claim.id}
-                        // onClick={() => setSelectedClaim(claim)} <-- Re-add if you want to open the modal
+                        onClick={() => setSelectedClaim(claim)} // ADDED: Click handler to set the selected claim
                         className={`p-6 rounded-xl cursor-pointer transition-all ${cardClass} group`}
                     >
                         {/* Updated Flex Structure for Mobile Reordering */}
@@ -597,8 +614,14 @@ export default function ProfilePage() {
   
   // Tabs for the sidebar
   const tabs = [
-      { name: "Claim History", icon: Trophy, content: <ClaimHistoryContent theme={theme} claimHistory={claimHistory} /> },
-      { name: "User Management", icon: UserCircle, content: <UserManagementContent theme={theme} airService={airService} isLoggedIn={isLoggedIn} userAddress={userAddress} handleLogout={handleLogout} /> },
+      // MODIFIED: Pass the setSelectedClaim function down to ClaimHistoryContent
+      { 
+          name: "Claim History", 
+          icon: Trophy, 
+          content: <ClaimHistoryContent theme={theme} claimHistory={claimHistory} setSelectedClaim={setSelectedClaim} /> 
+      },
+      // UPDATED TAB NAME AND COMPONENT
+      { name: "Account Details", icon: UserCircle, content: <AccountDetailsContent theme={theme} airService={airService} isLoggedIn={isLoggedIn} userAddress={userAddress} handleLogout={handleLogout} /> },
   ];
   
   const currentContent = tabs.find(t => t.name === activeTab)?.content;
@@ -627,13 +650,11 @@ export default function ProfilePage() {
       />
 
       <main className="px-4 sm:px-8 py-4 max-w-7xl mx-auto flex-grow w-full">
-        <h1 className="text-3xl font-bold mb-8">Profile Settings</h1>
+        <h1 className="text-3xl font-bold mb-8">Profile</h1>
         
         {/* Main Content Area: Sidebar + Right Content */}
-        {/* Removed flex-grow from the main container to ensure nav only takes up required height */}
         <div className="flex flex-col md:flex-row gap-8 items-start"> 
             {/* Sidebar (Left) */}
-            {/* Removed flex-shrink-0 for simplicity, and adjusted styling to control height */}
             <nav className={`w-full md:w-64 p-4 rounded-xl ${cardClass.replace('hover:', '')} sticky top-4`}>
                 <h2 className="text-lg font-bold mb-4">Navigation</h2>
                 <div className="flex md:flex-col gap-2 overflow-x-auto pb-2 md:overflow-x-visible md:pb-0">

@@ -52,7 +52,7 @@ To incentivize the use of the Air Kit login solution, we offer an immediate bene
 1.  Clone the repository:
     ```bash
     git clone [YOUR_REPO_URL]
-    cd prediction-market-demo
+    cd mocawin-air-kit
     ```
 
 2.  Install dependencies:
