@@ -92,11 +92,11 @@ export default function MyPredictions() {
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userAddress, setUserAddress] = useState<string | null>(null);
-    const [currentEnv] = useState<BUILD_ENV_TYPE>(BUILD_ENV.SANDBOX); // Gunakan env yang sama
+    const [currentEnv] = useState<BUILD_ENV_TYPE>(BUILD_ENV.SANDBOX); // Use the same env
 
     const [myTrades, setMyTrades] = useState<SavedTrade[]>([]);
     const [theme, setTheme] = useState<"light" | "dark">("light");
-    // State eksplisit untuk Navbar
+    // Explicit state for Navbar
     const [activeTab] = useState("My Predictions"); 
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -106,7 +106,7 @@ export default function MyPredictions() {
         title?: string;
         payout?: number;
         wp?: number;
-        claimType: 'win' | 'loss'; // State ini harus dikirim ke ClaimCard
+        claimType: 'win' | 'loss'; // This state must be sent to ClaimCard
     }>({ open: false, claimType: 'win' }); 
 
     const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
@@ -244,17 +244,17 @@ export default function MyPredictions() {
                 const payoutYes = totalYes > 0 ? totalYes * (100 / p.yes) : 0; 
                 const payoutNo = totalNo > 0 ? totalNo * (100 / p.no) : 0; 
 
-                // --- Tentukan Pemenang (logika demo: >50% menang) ---
+                // --- Determine Winner (demo logic: >50% wins) ---
                 let winningSide: 'Yes' | 'No' | undefined;
                 let winningPayout = 0;
 
                 if (p.yes > 50) {
                     winningSide = 'Yes';
-                    // Total payout hanya dari trade user yang bertaruh 'Yes'
+                    // Total payout only from user trades betting 'Yes'
                     winningPayout = rawTrades.filter(t => t.side === 'Yes').reduce((sum, t) => sum + (t.amount * (100 / p.yes)), 0); 
                 } else if (p.no > 50) {
                     winningSide = 'No';
-                    // Total payout hanya dari trade user yang bertaruh 'No'
+                    // Total payout only from user trades betting 'No'
                     winningPayout = rawTrades.filter(t => t.side === 'No').reduce((sum, t) => sum + (t.amount * (100 / p.no)), 0);
                 }
 
@@ -273,7 +273,7 @@ export default function MyPredictions() {
     }, [myTrades]);
 
 
-    // --- Open Claim Modal (1 Klaim Per Kartu) ---
+    // --- Open Claim Modal (1 Claim Per Card) ---
     const openClaim = (pred: DisplayPrediction) => {
         if (!pred.winningSide) return; 
 
@@ -299,14 +299,14 @@ export default function MyPredictions() {
     const confirmClaim = () => {
         if (!claimModal.predictionId) return;
 
-        // Hapus semua trade yang terkait dengan PredictionId yang diklaim
+        // Delete all trades associated with the claimed PredictionId
         const remaining = myTrades.filter(t => t.predictionId !== claimModal.predictionId);
         localStorage.setItem('myTrades', JSON.stringify(remaining));
         setMyTrades(remaining);
         
         const message = claimModal.claimType === 'win'
-            ? `Klaim $${claimModal.payout?.toFixed(2)} + ${claimModal.wp} WP berhasil!`
-            : `Pasar diselesaikan. Klaim $0.00 + ${claimModal.wp} WP untuk partisipasi!`;
+            ? `Claim $${claimModal.payout?.toFixed(2)} + ${claimModal.wp} WP successful!`
+            : `Market resolved. Claim $0.00 + ${claimModal.wp} WP for participation!`;
             
         alert(message);
         setClaimModal({ open: false, claimType: 'win' });
@@ -348,7 +348,7 @@ export default function MyPredictions() {
                 <div className="max-w-7xl mx-auto"> 
                     <h1 className="text-3xl font-bold mb-4 flex items-center">
                         <a href="/" className="hover:opacity-60 transition-opacity"></a>
-                        My Current Prediction
+                        My Current Predictions
                     </h1>
                     <p className="mb-8 text-opacity-70">
                         These are the market predictions where you placed trades locally in this browser.
@@ -453,7 +453,7 @@ export default function MyPredictions() {
                     theme={theme}
                     onClose={() => setClaimModal({ open: false, claimType: 'win' })} 
                     onClaim={confirmClaim}
-                    claimType={claimModal.claimType} // <-- FIXED: Meneruskan claimType
+                    claimType={claimModal.claimType} // Passing claimType
                 />
             )}
 
