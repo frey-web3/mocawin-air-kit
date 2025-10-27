@@ -377,11 +377,6 @@ export default function ProfilePage() {
           onClose={() => setSelectedClaim(null)}
         />
       )}
-       <footer className={`text-center py-10 mt-16 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
-        <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-          Mocawin © 2024 - A Mocaverse Product
-        </p>
-      </footer>
     </main>
   );
 }
