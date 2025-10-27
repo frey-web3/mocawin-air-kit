@@ -71,10 +71,11 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, 
   if (!isOpen || !result) return null;
 
   const status = result.status || 'Unknown';
+  const isComingSoon = status === 'ComingSoon';
   const StatusIcon = getStatusIcon(status);
   const statusColor = getStatusColor(status);
   const statusBgColor = getStatusBgColor(status);
-  const statusDescription = getStatusDescription(status);
+  const statusDescription = isComingSoon ? 'This feature will be available soon.' : getStatusDescription(status);
   const verified = isVerified(status);
   const pending = isVerificationPending(status);
   const failed = isVerificationFailed(status);
@@ -90,16 +91,13 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, 
             <StatusIcon className={`w-10 h-10 ${statusColor}`} />
           </div>
           <h3 className="text-2xl font-bold mb-3">
-            {verified ? 'Verification Successful!' : 
-             pending ? 'Verification in Progress' : 
-             failed ? 'Verification Failed' : 
-             'Verification Status'}
+            {isComingSoon ? 'Stay tuned.' : (verified ? 'Verification Successful!' : pending ? 'Verification in Progress' : failed ? 'Verification Failed' : 'Verification Status')}
           </h3>
           <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'} mb-2`}>
             {statusDescription}
           </p>
           <div className={`inline-block px-4 py-2 rounded-full font-bold text-sm mt-2 ${statusBgColor} ${statusColor}`}>
-            {getStatusLabel(status)}
+            {isComingSoon ? 'Coming Soon' : getStatusLabel(status)}
           </div>
         </div>
 
@@ -182,102 +180,23 @@ const AccountDetailsContent: React.FC = () => {
   }, [airService, fetchUserInfo]);
 
   // ====================================================================
-  // Core Verification Function
+  // Core Verification Function (Temporarily disabled)
   // ====================================================================
 
   const handleRequestVerification = async () => {
-    if (!airService || isVerifying || !userInfo?.user.abstractAccountAddress) return;
-
-    // Clear any existing polling interval
-    if (pollIntervalId) {
-      clearInterval(pollIntervalId);
-      setPollIntervalId(null);
+    // The SDK integration is not ready yet. Keep the button, but show a "Coming Soon" modal.
+    if (!userInfo?.user.abstractAccountAddress) {
+      setError('No abstract account address available.');
+      return;
     }
 
-    setIsVerifying(true);
-    setVerificationResult(null);
-    setError(null);
-
-    try {
-      // 1. Call the backend API to initiate verification
-      const response = await fetch('/api/verify/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress: userInfo.user.abstractAccountAddress }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to request verification. Status: ${response.status}`);
-      }
-
-      // 2. Open the modal with the verification URL
-      setVerificationResult({ 
-        status: 'Pending', 
-        verificationUrl: data.verificationUrl,
-        verificationRequestId: data.verificationRequestId
-      });
-      setVerificationModalOpen(true);
-
-      // 3. Poll for verification completion
-      const interval = setInterval(async () => {
-        try {
-          const statusResponse = await fetch('/api/verify/status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              verificationRequestId: data.verificationRequestId 
-            }),
-          });
-
-          const statusData = await statusResponse.json();
-
-          // Update verification result with the latest status
-          setVerificationResult({
-            status: statusData.status,
-            proofResult: statusData.proofResult,
-            verificationUrl: data.verificationUrl,
-            verificationRequestId: data.verificationRequestId
-          });
-
-          // Stop polling if verification is complete (success or failure)
-          if (isVerified(statusData.status)) {
-            clearInterval(interval);
-            setPollIntervalId(null);
-            setIsVerifying(false);
-          } else if (isVerificationFailed(statusData.status)) {
-            clearInterval(interval);
-            setPollIntervalId(null);
-            setIsVerifying(false);
-            setError(`Verification ${statusData.status.toLowerCase()}: ${getStatusDescription(statusData.status)}`);
-          }
-        } catch (pollError) {
-          console.error('Polling error:', pollError);
-        }
-      }, 3000); // Poll every 3 seconds
-
-      setPollIntervalId(interval);
-
-      // Stop polling after 5 minutes
-      setTimeout(() => {
-        clearInterval(interval);
-        setPollIntervalId(null);
-        if (isVerifying) {
-          setIsVerifying(false);
-          setError('Verification timed out. Please try again.');
-          // FIX: The parameter 'prev' is now correctly typed as 'VerificationResult | null' due to the state type
-          setVerificationResult(prev => prev ? { ...prev, status: 'Failed' } : null);
-        }
-      }, 300000);
-
-    } catch (e: any) {
-      console.error("Verification failed:", e);
-      setError(`Verification request failed: ${e.message}`);
-      setVerificationResult(null);
-      setIsVerifying(false);
-      setVerificationModalOpen(false);
-    }
+    // Open a modal informing the user this feature is coming soon.
+    setIsVerifying(false);
+    setVerificationResult({
+      status: 'ComingSoon',
+      proofResult: null,
+    });
+    setVerificationModalOpen(true);
   };
 
   // Cleanup polling on unmount
@@ -368,13 +287,13 @@ const AccountDetailsContent: React.FC = () => {
               </span>
               <button
                 onClick={handleRequestVerification}
-                disabled={isVerifying || !user.abstractAccountAddress}
+                disabled={!user.abstractAccountAddress}
                 className={`px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed border-2 ${
                   verified 
                     ? (theme === 'dark' ? 'bg-green-500/10 border-green-500 text-green-400 hover:bg-green-500/20' : 'bg-green-500/10 border-green-500 text-green-600 hover:bg-green-500/20')
                     : (theme === 'dark' ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 hover:bg-indigo-500/20' : 'bg-indigo-500/10 border-indigo-500 text-indigo-600 hover:bg-indigo-500/20')
                 }`}>
-                {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : (verified ? 'Re-verify' : 'Get Verified')}
+                {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : (verified ? 'Re-verify (Coming Soon)' : 'Get Verified (Coming Soon)')}
               </button>
             </div>
           </div>
