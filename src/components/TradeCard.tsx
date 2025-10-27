@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
+import type { AirService } from '@mocanetwork/airkit'; // Diperbaiki
 
 // Define the type for the prediction data
 interface Prediction {
@@ -12,9 +13,12 @@ interface Prediction {
   volume: string;
 }
 
+// Perbarui TradeCardProps untuk menggunakan AirService
 interface TradeCardProps {
   prediction: Prediction;
   onClose: () => void;
+  airService: AirService | null; // Diperbaiki
+  jwt: string | null;
 }
 
 // Define the type for a saved trade
@@ -27,8 +31,8 @@ interface SavedTrade {
   date: string;
 }
 
-const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose }) => {
-  const { theme, airService, jwt } = useAppContext();
+const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose, airService, jwt }) => {
+  const { theme } = useAppContext();
 
   const [tradeAmount, setTradeAmount] = useState<string>('');
   const [tradeSide, setTradeSide] = useState<'Yes' | 'No'>('Yes');
@@ -46,7 +50,7 @@ const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose }) => {
 
   const buttonClass = tradeSide === 'Yes' 
     ? 'bg-green-600 hover:bg-green-700' 
-    : 'bg-red-600 hover:bg-red-700';
+    : 'bg-red-600 hover:bg-red-600';
 
   const disabledButtonClass = theme === 'dark'
     ? 'bg-gray-600'
@@ -192,8 +196,8 @@ const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose }) => {
             onChange={(e) => setTradeAmount(e.target.value)}
             placeholder="e.g., 100"
             min="1"
-            className={`w-full p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${inputClass}`}
-          />
+            className={`w-full p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${inputClass}`}>
+          </input>
         </div>
         
         {/* Trade Summary Section */}
@@ -223,8 +227,7 @@ const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose }) => {
         <button
           onClick={handleVerifyAgeAndTrade}
           disabled={isButtonDisabled}
-          className={`w-full py-3 rounded-xl font-bold text-white transition-opacity ${isButtonDisabled ? `opacity-50 cursor-not-allowed ${disabledButtonClass}` : buttonClass}`}
-        >
+          className={`w-full py-3 rounded-xl font-bold text-white transition-opacity ${isButtonDisabled ? `opacity-50 cursor-not-allowed ${disabledButtonClass}` : buttonClass}`}>
           {getButtonText()}
         </button>
       </div>

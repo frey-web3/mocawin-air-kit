@@ -34,7 +34,7 @@ export async function POST() {
 
     // Kredensial Anda
     const partnerId = '569abbb4-3682-46cf-90b0-f9b9746ef150';
-    const keyId = 'eb1a199c15fc658a';
+    const keyId = '45f8f4c0a1a4592a'; // DIPERBARUI
 
     if (!partnerId || !keyId) {
       throw new Error('Konfigurasi JWT tidak lengkap. partnerId atau keyId hilang.');
