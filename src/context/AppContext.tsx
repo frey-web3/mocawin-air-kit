@@ -10,7 +10,6 @@ interface AppContextType {
   isLoggingIn: boolean;
   isInitialized: boolean;
   userAddress: string | null;
-  jwt: string | null;
   
   // Auth Functions
   handleLogin: () => Promise<void>;

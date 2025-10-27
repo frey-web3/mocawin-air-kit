@@ -120,8 +120,7 @@ export default function PredictionMarket() {
   const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(
     null
   );
-  // 1. Ambil airService dan jwt dari konteks
-  const { isLoggedIn, handleLogin, theme, airService, jwt } = useAppContext();
+  const { isLoggedIn, handleLogin, theme } = useAppContext();
 
   const handleTradeButtonClick = (prediction: Prediction) => {
     if (isLoggedIn) {
@@ -259,9 +258,6 @@ export default function PredictionMarket() {
         <TradeCard
           prediction={selectedPrediction}
           onClose={closeTradeCard}
-          // 2. Teruskan sebagai props ke TradeCard
-          airService={airService}
-          jwt={jwt}
         />
       )}
     </main>

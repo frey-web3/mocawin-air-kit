@@ -9,8 +9,6 @@
   },
   "dependencies": {
     "@mocanetwork/airkit": "^1.6.0",
-    "jose": "^6.1.0",
-    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
     "react": "19.1.0",
@@ -18,7 +16,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

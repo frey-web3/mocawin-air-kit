@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
-import type { AirService } from '@mocanetwork/airkit'; // Diperbaiki
 
 // Define the type for the prediction data
 interface Prediction {
@@ -13,12 +12,9 @@ interface Prediction {
   volume: string;
 }
 
-// Perbarui TradeCardProps untuk menggunakan AirService
 interface TradeCardProps {
   prediction: Prediction;
   onClose: () => void;
-  airService: AirService | null; // Diperbaiki
-  jwt: string | null;
 }
 
 // Define the type for a saved trade
@@ -31,14 +27,12 @@ interface SavedTrade {
   date: string;
 }
 
-const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose, airService, jwt }) => {
+const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose }) => {
   const { theme } = useAppContext();
 
   const [tradeAmount, setTradeAmount] = useState<string>('');
   const [tradeSide, setTradeSide] = useState<'Yes' | 'No'>('Yes');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [hasBeenVerified, setHasBeenVerified] = useState(false);
 
   const cardBgClass = theme === 'dark' 
     ? 'bg-gray-800 border border-gray-700 text-white' 
@@ -50,11 +44,7 @@ const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose, airService, 
 
   const buttonClass = tradeSide === 'Yes' 
     ? 'bg-green-600 hover:bg-green-700' 
-    : 'bg-red-600 hover:bg-red-600';
-
-  const disabledButtonClass = theme === 'dark'
-    ? 'bg-gray-600'
-    : 'bg-gray-300';
+    : 'bg-red-600 hover:bg-red-700';
 
   const currentPrice = tradeSide === 'Yes' ? prediction.yes : prediction.no;
   
@@ -105,52 +95,7 @@ const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose, airService, 
     }
   };
 
-  const handleVerifyAgeAndTrade = async () => {
-    if (hasBeenVerified) {
-      handleConfirmTrade();
-      return;
-    }
-
-    if (!airService || !jwt) {
-      alert('Service not ready. Please ensure you are logged in and try again.');
-      return;
-    }
-
-    setIsVerifying(true);
-
-    try {
-      // TODO: Replace this with your actual Verification Program ID from the Mocaverse Developer Dashboard.
-      const programId = 'c21si031hb62h0125263gT';
-
-      const result = await airService.verifyCredential({
-        authToken: jwt,
-        programId: programId,
-        redirectUrl: window.location.href, // Add this line
-      });
-
-      if (result.status === 'Compliant') {
-        alert('Age verification successful!');
-        setHasBeenVerified(true);
-        handleConfirmTrade();
-      } else {
-        alert(`Verification Failed: ${result.status}. You must be 18+ to trade.`);
-        onClose();
-      }
-    } catch (error) {
-      console.error('Credential verification failed:', error);
-      alert('An error occurred during age verification.');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const isButtonDisabled = isProcessing || isVerifying || !tradeAmount || parseFloat(tradeAmount) <= 0;
-
-  const getButtonText = () => {
-    if (isVerifying) return 'Verifying Age...';
-    if (isProcessing) return 'Processing...';
-    return `Confirm Buy ${tradeSide}`;
-  };
+  const isButtonDisabled = isProcessing || !tradeAmount || parseFloat(tradeAmount) <= 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -196,8 +141,8 @@ const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose, airService, 
             onChange={(e) => setTradeAmount(e.target.value)}
             placeholder="e.g., 100"
             min="1"
-            className={`w-full p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${inputClass}`}>
-          </input>
+            className={`w-full p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${inputClass}`}
+          />
         </div>
         
         {/* Trade Summary Section */}
@@ -225,10 +170,11 @@ const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose, airService, 
         </div>
 
         <button
-          onClick={handleVerifyAgeAndTrade}
+          onClick={handleConfirmTrade}
           disabled={isButtonDisabled}
-          className={`w-full py-3 rounded-xl font-bold text-white transition-opacity ${isButtonDisabled ? `opacity-50 cursor-not-allowed ${disabledButtonClass}` : buttonClass}`}>
-          {getButtonText()}
+          className={`w-full py-3 rounded-xl font-bold text-white transition-opacity ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : buttonClass}`}
+        >
+          {isProcessing ? 'Processing...' : `Confirm Buy ${tradeSide}`}
         </button>
       </div>
     </div>
