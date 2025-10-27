@@ -63,23 +63,27 @@ export default function ClaimCard({
     onClose();
   };
 
-  // --- Border + Background (same as ClaimDetailCard) ---
+  // --- Border + Background ---
   const containerClass = `
     w-full max-w-md rounded-2xl p-6 shadow-2xl
-    ${theme === "dark" 
-      ? "bg-black border border-white/10 text-white" 
-      : "bg-white border border-black/10 text-black"
+    ${
+      theme === "dark"
+        ? "bg-gray-800 border border-gray-700 text-white"
+        : "bg-white border border-black/10 text-black"
     }
   `.trim();
 
   // --- Conditional styling and text ---
   const headerText = claimType === 'win' ? "Claim Your Winnings" : "Clear Resolved Market";
-  const payoutColor = claimType === 'win' ? "text-green-500" : "text-gray-500/80";
+  const payoutColor = claimType === 'win' 
+    ? (theme === 'dark' ? 'text-green-400' : 'text-green-600')
+    : (theme === 'dark' ? 'text-gray-500/80' : 'text-gray-600/80');
   const buttonBg = claimType === 'win' 
     ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
     : "bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700";
   const confirmText = claimType === 'win' ? "Confirm Claim" : "Confirm Clear";
   const payoutUSDText = claimType === 'win' ? `$${payoutUSD.toFixed(2)}` : `$0.00 (Loss)`;
+  const lossTextColor = theme === 'dark' ? 'text-red-400/80' : 'text-red-600/80';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -102,7 +106,7 @@ export default function ClaimCard({
         
         {/* Conditional description for loss */}
         {claimType === 'loss' && (
-            <p className="mb-4 text-sm text-red-400/80 font-medium">
+            <p className={`mb-4 text-sm font-medium ${lossTextColor}`}>
                 You will not receive a payout, but you will still receive WinPoints for participating in the market.
             </p>
         )}
@@ -110,19 +114,23 @@ export default function ClaimCard({
         <p className="mb-4">{title}</p>
 
         {/* Payout Summary */}
-        <div className={`p-4 rounded-lg ${theme === "dark" ? "bg-white/5" : "bg-black/5"}`}>
+        <div className={`space-y-4 rounded-lg p-4 mb-6 ${theme === "dark" ? "bg-gray-900/50" : "bg-black/5"}`}>
           <div className="flex justify-between text-lg font-semibold">
             <span>Total Payout (USD)</span>
             <span className={payoutColor}>{payoutUSDText}</span>
           </div>
 
-          <div className="mt-3 flex justify-between text-lg font-semibold">
+          <div className="flex justify-between text-lg font-semibold">
             <span>WinPoints (WP)</span>
-            <span className="text-yellow-500">{winPoints} WP</span>
+            <span className={theme === 'dark' ? 'text-yellow-500' : 'text-amber-600'}>{winPoints} WP</span>
           </div>
 
           {/* MVP FEATURE: AIR KIT BONUS */}
-          <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-indigo-600/20 border border-purple-500/50 shadow-lg animate-pulse-slow">
+          <div className={`mt-4 p-4 rounded-xl bg-gradient-to-r shadow-lg animate-pulse-slow ${
+            theme === 'dark' 
+              ? 'from-purple-600/20 via-pink-600/20 to-indigo-600/20 border border-purple-500/50'
+              : 'from-purple-600/10 via-pink-600/10 to-indigo-600/10 border border-purple-500/30'
+          }`}>
             <div className="flex items-center gap-2.5">
               {/* Air Kit Logo Badge */}
               <div className="relative">
@@ -133,11 +141,13 @@ export default function ClaimCard({
               </div>
 
               <div className="flex-1">
-                <p className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                <p className={`text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r ${
+                  theme === 'dark' ? 'from-purple-400 to-pink-400' : 'from-purple-600 to-pink-600'
+                }`}>
                   BONUS: +10% WP for using <span className="underline decoration-pink-400">Air Kit</span> login!
                 </p>
-                <p className="text-xs opacity-80 mt-0.5">
-                  You earned <strong className="text-yellow-400">+{Math.floor(winPoints / 1.1 * 0.1)} WP</strong> extra
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'opacity-80' : 'opacity-90'}`}>
+                  You earned <strong className={theme === 'dark' ? 'text-yellow-400' : 'text-amber-600'}>+{Math.floor(winPoints / 1.1 * 0.1)} WP</strong> extra
                 </p>
               </div>
             </div>
@@ -150,7 +160,7 @@ export default function ClaimCard({
             onClick={onClose}
             disabled={processing}
             className={`flex-1 py-2.5 rounded-lg font-medium transition-opacity ${
-              theme === "dark" ? "bg-white/10 hover:bg-white/20" : "bg-black/10 hover:bg-black/20"
+              theme === "dark" ? "bg-gray-700 hover:bg-gray-600" : "bg-black/10 hover:bg-black/20"
             }`}
           >
             Cancel
@@ -159,14 +169,10 @@ export default function ClaimCard({
           <button
             onClick={handleConfirm}
             disabled={processing}
-            className={`flex-1 py-2.5 rounded-lg font-bold text-white transition-opacity relative overflow-hidden ${
+            className={`flex-1 py-2.5 rounded-lg font-bold text-white transition-opacity ${
               processing ? "opacity-50" : buttonBg
-            }`}
-          >
-            <span className="relative z-10">{processing ? "Processing…" : confirmText}</span>
-            {!processing && (
-              <div className="absolute inset-0 bg-white/20 animate-ping"></div>
-            )}
+            }`}>
+            {processing ? "Processing…" : confirmText}
           </button>
         </div>
       </div>

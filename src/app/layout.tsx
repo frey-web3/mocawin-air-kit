@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
+import ClientLayout, { ThemeInitializer } from "./client-layout";
 
-// Definisi font Roboto
 const roboto = Roboto({
-  weight: ["400", "700"], 
+  weight: ["400", "700"],
   subsets: ["latin"],
-  variable: "--font-roboto", 
+  variable: "--font-roboto",
 });
 
 export const metadata: Metadata = {
@@ -20,10 +20,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      {/* Menggunakan className dari Roboto dan variabel CSS-nya */}
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <ThemeInitializer />
+      </head>
       <body className={`${roboto.className} ${roboto.variable} antialiased`}>
-        {children}
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

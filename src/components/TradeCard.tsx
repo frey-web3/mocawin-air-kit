@@ -1,7 +1,9 @@
-// ../components/TradeCard.tsx
-import { useState, useMemo } from "react";
+'use client';
 
-// Define the type for the prediction data (copied from page.tsx for local use)
+import { useState, useMemo } from 'react';
+import { useAppContext } from '../context/AppContext';
+
+// Define the type for the prediction data
 interface Prediction {
   id: number;
   title: string;
@@ -13,58 +15,45 @@ interface Prediction {
 interface TradeCardProps {
   prediction: Prediction;
   onClose: () => void;
-  theme: "light" | "dark";
-  // ADDED: Props passed from page.tsx to resolve the error
-  isLoggedIn: boolean;
-  handleLogin: () => Promise<void>; 
 }
 
 // Define the type for a saved trade
 interface SavedTrade {
-    id: number;
-    predictionId: number;
-    title: string;
-    amount: number;
-    side: 'Yes' | 'No';
-    date: string;
+  id: number;
+  predictionId: number;
+  title: string;
+  amount: number;
+  side: 'Yes' | 'No';
+  date: string;
 }
 
-// Updated the component destructuring to include the new props
-const TradeCard: React.FC<TradeCardProps> = ({ 
-    prediction, 
-    onClose, 
-    theme, 
-    isLoggedIn, // Included in destructuring
-    handleLogin // Included in destructuring
-}) => {
-  const [tradeAmount, setTradeAmount] = useState<string>("");
-  const [tradeSide, setTradeSide] = useState<"Yes" | "No">("Yes");
+const TradeCard: React.FC<TradeCardProps> = ({ prediction, onClose }) => {
+  const { theme } = useAppContext();
+
+  const [tradeAmount, setTradeAmount] = useState<string>('');
+  const [tradeSide, setTradeSide] = useState<'Yes' | 'No'>('Yes');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Helper to determine text and background colors based on theme
-  const cardBgClass = theme === "dark" 
-    ? "bg-black border border-white/10 text-white" 
-    : "bg-white border border-black/10 text-black";
+  const cardBgClass = theme === 'dark' 
+    ? 'bg-gray-800 border border-gray-700 text-white' 
+    : 'bg-white border border-black/10 text-black';
   
-  const inputClass = theme === "dark" 
-    ? "bg-white/10 border border-white/20 text-white" 
-    : "bg-black/5 border border-black/20 text-black";
+  const inputClass = theme === 'dark' 
+    ? 'bg-gray-700 border border-gray-600 text-white' 
+    : 'bg-black/5 border border-black/20 text-black';
 
   const buttonClass = tradeSide === 'Yes' 
-    ? "bg-green-600 hover:bg-green-700" 
-    : "bg-red-600 hover:bg-red-700";
+    ? 'bg-green-600 hover:bg-green-700' 
+    : 'bg-red-600 hover:bg-red-700';
 
   const currentPrice = tradeSide === 'Yes' ? prediction.yes : prediction.no;
   
-  // 💡 UPDATED: Calculate both Payout and Profit
   const { estimatedPayout, estimatedProfit } = useMemo(() => {
     const amount = parseFloat(tradeAmount);
-    // Return default values if the amount is invalid
-    if (isNaN(amount) || amount <= 0) return { estimatedPayout: "0.00", estimatedProfit: "0.00" }; 
+    if (isNaN(amount) || amount <= 0) return { estimatedPayout: '0.00', estimatedProfit: '0.00' };
 
-    // Payout = Amount * (100 / currentPrice)
     const payout = amount * (100 / currentPrice);
-    const profit = payout - amount; // Calculate profit (Payout - Amount Traded)
+    const profit = payout - amount;
     
     return {
         estimatedPayout: payout.toFixed(2),
@@ -72,33 +61,21 @@ const TradeCard: React.FC<TradeCardProps> = ({
     };
   }, [tradeAmount, currentPrice]);
 
-
-  /* -------------------------------------------------
-     Trade Logic: Save to Local Storage
-     ------------------------------------------------- */
   const handleConfirmTrade = () => {
     const amount = parseFloat(tradeAmount);
 
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid trade amount.");
+      alert('Please enter a valid trade amount.');
       return;
-    }
-    
-    // Check if the user is logged in before proceeding to trade
-    if (!isLoggedIn) {
-        handleLogin();
-        return; 
     }
 
     setIsProcessing(true);
 
     try {
-      // 1. Get existing trades from localStorage
       const existingTrades: SavedTrade[] = JSON.parse(localStorage.getItem('myTrades') || '[]');
       
-      // 2. Create the new trade object
       const newTrade: SavedTrade = {
-        id: Date.now(), // Unique ID
+        id: Date.now(),
         predictionId: prediction.id,
         title: prediction.title,
         amount,
@@ -106,18 +83,19 @@ const TradeCard: React.FC<TradeCardProps> = ({
         date: new Date().toISOString(),
       };
 
-      // 3. Save the updated array back to localStorage
       localStorage.setItem('myTrades', JSON.stringify([...existingTrades, newTrade]));
       
       alert(`Successfully placed a ${tradeSide} trade for $${amount}!`);
-      onClose(); // Close the modal
+      onClose();
     } catch (e) {
-      console.error("Failed to save trade to local storage:", e);
-      alert("Error saving trade locally.");
+      console.error('Failed to save trade to local storage:', e);
+      alert('Error saving trade locally.');
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const isButtonDisabled = isProcessing || !tradeAmount || parseFloat(tradeAmount) <= 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -131,29 +109,27 @@ const TradeCard: React.FC<TradeCardProps> = ({
           </button>
         </div>
 
-        <h4 className="text-lg font-semibold mb-4 border-b pb-2">{prediction.title}</h4>
+        <h4 className="text-lg font-semibold mb-4 pb-2">{prediction.title}</h4>
 
-        {/* Trade Side Selector */}
         <div className="flex gap-4 mb-4">
           <button
-            onClick={() => setTradeSide("Yes")}
+            onClick={() => setTradeSide('Yes')}
             className={`flex-1 py-3 rounded-xl font-bold transition-colors ${
-              tradeSide === "Yes" ? "bg-green-500 text-white" : `${inputClass} opacity-80`
+              tradeSide === 'Yes' ? 'bg-green-500 text-white' : `${inputClass} opacity-80`
             }`}
           >
             Buy YES ({prediction.yes}%)
           </button>
           <button
-            onClick={() => setTradeSide("No")}
+            onClick={() => setTradeSide('No')}
             className={`flex-1 py-3 rounded-xl font-bold transition-colors ${
-              tradeSide === "No" ? "bg-red-500 text-white" : `${inputClass} opacity-80`
+              tradeSide === 'No' ? 'bg-red-500 text-white' : `${inputClass} opacity-80`
             }`}
           >
             Buy NO ({prediction.no}%)
           </button>
         </div>
 
-        {/* Amount Input */}
         <div className="mb-6">
           <label htmlFor="amount" className="block text-sm font-medium mb-2">
             Amount to Trade (USD)
@@ -169,41 +145,36 @@ const TradeCard: React.FC<TradeCardProps> = ({
           />
         </div>
         
-        {/* Summary */}
-        <div className="space-y-2 mb-6 p-4 rounded-lg bg-opacity-5" style={{backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}}>
+        {/* Trade Summary Section */}
+        <div className="space-y-2 mb-6">
             <div className="flex justify-between text-sm">
-                <span>Selected Side:</span>
-                <span className={`font-semibold ${tradeSide === 'Yes' ? 'text-green-500' : 'text-red-500'}`}>{tradeSide}</span>
+                <span className="opacity-70">Selected Side:</span>
+                <span className={`font-semibold ${
+                    tradeSide === 'Yes' 
+                    ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') 
+                    : (theme === 'dark' ? 'text-red-400' : 'text-red-600')
+                }`}>{tradeSide}</span>
             </div>
-            <div className="flex justify-between text-sm">
-                <span>Current Price:</span>
-                <span className="font-semibold">{currentPrice}%</span>
+            <div className="flex justify-between text-sm font-bold">
+                <span className="opacity-70">Est. Potential Profit:</span>
+                <span className={`font-semibold ${
+                    parseFloat(estimatedProfit) > 0 
+                    ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') 
+                    : ''
+                }`}>{estimatedProfit} USD</span>
             </div>
-            {/* 💡 NEW: Estimated Profit Row */}
-            <div className="flex justify-between text-sm">
-                <span>Est. Potential Profit:</span>
-                <span className={`font-semibold ${parseFloat(estimatedProfit) > 0 ? 'text-green-500' : ''}`}>{estimatedProfit} USD</span>
-            </div>
-            <div className="flex justify-between font-bold pt-2 border-t border-opacity-20">
-                {/* Changed label for clarity */}
-                <span>Est. Total Payout:</span>
+            <div className="flex justify-between text-sm font-bold">
+                <span className="opacity-70">Est. Total Payout:</span>
                 <span>{estimatedPayout} USD</span>
             </div>
         </div>
 
-
-        {/* Confirm Button */}
         <button
-          onClick={isLoggedIn ? handleConfirmTrade : handleLogin} // Conditional action based on login state
-          disabled={isProcessing || (!isLoggedIn && false) || (!isLoggedIn && true) ? false : !tradeAmount || parseFloat(tradeAmount) <= 0}
-          className={`w-full py-3 rounded-xl font-bold text-white transition-opacity ${
-            isProcessing || (!isLoggedIn && false) || (!isLoggedIn && true) ? 'opacity-50 cursor-not-allowed' : buttonClass
-          }`}
+          onClick={handleConfirmTrade}
+          disabled={isButtonDisabled}
+          className={`w-full py-3 rounded-xl font-bold text-white transition-opacity ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : buttonClass}`}
         >
-          {isLoggedIn 
-            ? (isProcessing ? "Processing..." : `Confirm Buy ${tradeSide}`)
-            : "Login to Trade"
-          }
+          {isProcessing ? 'Processing...' : `Confirm Buy ${tradeSide}`}
         </button>
       </div>
     </div>

@@ -1,22 +1,23 @@
-// components/Navbar.tsx
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from 'react';
 import {
   Moon,
   Sun,
   User,
   LogOut,
   Crown,
-  Zap,
   Menu,
   X,
   Search,
-  Settings,
   UserCircle,
-} from "lucide-react";
+  Home,
+  Rss,
+  ChartNoAxesColumn,
+} from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAppContext } from '../context/AppContext';
 
-// Props Interface
 interface Prediction {
   id: number;
   title: string;
@@ -25,23 +26,6 @@ interface Prediction {
   volume: string;
 }
 
-interface NavbarProps {
-  theme: "light" | "dark";
-  toggleTheme: () => void;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  isLoggedIn: boolean;
-  userAddress: string | null;
-  handleLogin: () => Promise<void>;
-  handleLogout: () => Promise<void>;
-  isLoggingIn: boolean;
-  predictions: Prediction[];
-  confirmedNews: string[];
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-}
-
-// Search Logic
 const filterPredictions = (predictions: Prediction[], query: string) => {
   if (!query) return [];
   return predictions.filter((p) =>
@@ -49,495 +33,273 @@ const filterPredictions = (predictions: Prediction[], query: string) => {
   );
 };
 
-// Navigation Path Helper
-const getPath = (tab: string): string => {
-  switch (tab.toLowerCase()) {
-    case "home":
-      return "/";
-    case "market":
-      return "/market";
-    case "my predictions":
-      return "/my-predictions";
-    case "profile":
-      return "/profile";
-    default:
-      return "/";
-  }
-};
+export default function Navbar() {
+  const {
+    theme,
+    toggleTheme,
+    isLoggedIn,
+    userAddress,
+    handleLogin,
+    handleLogout,
+    isLoggingIn,
+    predictions,
+    searchQuery,
+    setSearchQuery,
+  } = useAppContext();
 
-// Get Initial Active Tab
-const getInitialActiveTab = (): string => {
-  if (typeof window === 'undefined') return "home";
-  const path = window.location.pathname.toLowerCase();
-  
-  if (path === "/my-predictions") return "My Predictions";
-  if (path === "/market") return "market";
-  if (path === "/profile") return "profile";
-  return "home";
-};
+  const router = useRouter();
+  const pathname = usePathname();
 
-export default function Navbar({
-  theme,
-  toggleTheme,
-  activeTab: propActiveTab,
-  setActiveTab,
-  isLoggedIn,
-  userAddress,
-  handleLogin,
-  handleLogout,
-  isLoggingIn,
-  predictions,
-  confirmedNews,
-  searchQuery,
-  setSearchQuery,
-}: NavbarProps) {
-  /* ---------- UI state ---------- */
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isDesktopSearchOpen, setIsDesktopSearchOpen] = useState(false);
-  const [backdropOpacity, setBackdropOpacity] = useState(0);
-  const [backdropBlur, setBackdropBlur] = useState(0);
-  
-  const [localActiveTab, setLocalActiveTab] = useState(propActiveTab || getInitialActiveTab());
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const desktopSearchRef = useRef<HTMLDivElement>(null);
-  const mobileDropdownContentRef = useRef<HTMLDivElement>(null);
 
   const filteredResults = filterPredictions(predictions, searchQuery);
-  const currentActiveTab = propActiveTab || localActiveTab;
 
-  /* Sync Tab */
-  useEffect(() => {
-    if (propActiveTab) {
-      setLocalActiveTab(propActiveTab);
-    } else {
-      setLocalActiveTab(getInitialActiveTab());
-    }
-  }, [propActiveTab]);
+  const navLinks = [
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'Market', href: '/market', icon: Rss },
+    { name: 'My Predictions', href: '/my-predictions', icon: ChartNoAxesColumn },
+  ];
 
-  /* Click-outside handling */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const targetNode = event.target as Node;
-
-      if (desktopSearchRef.current && !desktopSearchRef.current.contains(targetNode)) {
-        setIsDesktopSearchOpen(false);
-      }
-
-      const isClickInsideDesktopDropdown = dropdownRef.current && dropdownRef.current.contains(targetNode);
-      const isClickInsideMobileDropdown = mobileDropdownContentRef.current && mobileDropdownContentRef.current.contains(targetNode);
-      const mobileUserButton = document.querySelector('[aria-label="User menu mobile"]');
-      const isClickOnMobileButton = mobileUserButton && mobileUserButton.contains(targetNode);
-
-      if (isDropdownOpen && !isClickInsideDesktopDropdown && !isClickInsideMobileDropdown && !isClickOnMobileButton) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
+      if (desktopSearchRef.current && !desktopSearchRef.current.contains(event.target as Node)) {
+        setIsDesktopSearchOpen(false);
+      }
     };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isDropdownOpen]);
-
-  /* Sidebar backdrop animation */
-  useEffect(() => {
-    if (isMenuOpen) {
-      const timer = setTimeout(() => {
-        setBackdropOpacity(0.5);
-        setBackdropBlur(8);
-      }, 50);
-      return () => clearTimeout(timer);
-    } else {
-      setBackdropOpacity(0);
-      setBackdropBlur(0);
-    }
-  }, [isMenuOpen]);
-
-  const closeMobileSearch = () => {
-    setIsMobileSearchOpen(false);
-    setSearchQuery("");
-  };
-
-  const handleDesktopSearchChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setSearchQuery(e.target.value);
-  const handleMobileSearchChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setSearchQuery(e.target.value);
-
-  const handleTabClick = (tab: string) => {
-    setActiveTab(tab);
-    setLocalActiveTab(tab);
-    window.location.href = getPath(tab);
-  };
-
-  const handleProfileClick = () => {
-    window.location.href = "/profile";
+  const handleNavigation = (href: string) => {
+    router.push(href);
+    setIsMenuOpen(false);
   };
 
   return (
     <>
-      {/* MOBILE SEARCH OVERLAY */}
-      {isMobileSearchOpen && (
-        <div className={`fixed inset-0 z-[110] p-4 sm:hidden ${theme === "dark" ? "bg-black" : "bg-white"}`}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="relative flex-grow">
-              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${theme === "dark" ? "text-white/50" : "text-black/50"}`} />
-              <input
-                type="text"
-                placeholder="Search markets..."
-                value={searchQuery}
-                onChange={handleMobileSearchChange}
-                className={`pl-10 pr-10 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 w-full transition-colors ${
-                  theme === "dark"
-                    ? "bg-black border-white/20 text-white focus:ring-amber-600"
-                    : "bg-white border-black/20 text-black focus:ring-amber-600"
-                }`}
-                autoFocus
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full opacity-70 hover:opacity-100"
-                  aria-label="Clear search"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={closeMobileSearch}
-              className="text-sm font-medium text-amber-600 hover:text-amber-500 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-
-          <div className="overflow-y-auto h-[calc(100vh-80px)]">
-            {searchQuery.length > 0 && filteredResults.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
-                {filteredResults.map((p) => (
-                  <div
-                    key={p.id}
-                    className={`rounded-xl p-4 border transition-all cursor-pointer ${
-                      theme === "dark"
-                        ? "bg-white/5 border-white/10 hover:border-white/20"
-                        : "bg-black/5 border-black/10 hover:border-black/20"
-                    }`}
-                    onClick={closeMobileSearch}
-                  >
-                    <h3 className="font-semibold text-lg mb-2">{p.title}</h3>
-                    <span className="text-sm opacity-70">Volume: {p.volume}</span>
-                    <div className="flex items-center mt-3 text-sm">
-                      <span className="text-green-500 font-medium mr-4">Yes: {p.yes}%</span>
-                      <span className="text-red-500 font-medium">No: {p.no}%</span>
-                    </div>
-                  </div>
-                ))}
+      <nav
+        className={`sticky top-0 z-40 w-full ${
+          theme === 'dark'
+            ? 'bg-gray-900/80 border-b border-slate-800 text-white'
+            : 'bg-white/80 border-b border-slate-200 text-slate-800'
+        } backdrop-blur-xl`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Left Side: Menu for Mobile, Logo+Links for Desktop */}
+            <div className="flex items-center">
+              <button
+                onClick={() => setIsMenuOpen(true)}
+                className={`md:hidden p-2 -ml-2 rounded-full ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <div className="hidden md:flex items-center space-x-8">
+                <a href="/" className="flex items-center space-x-2">
+                  <Crown className={`w-8 h-8 ${theme === 'dark' ? 'text-indigo-500' : 'text-indigo-600'}`} />
+                  <span className="text-2xl font-bold">Mocawin</span>
+                </a>
+                <div className="flex items-center space-x-6">
+                  {navLinks.map((link) => (
+                    <a
+                      key={link.name}
+                      href={link.href}
+                      onClick={(e) => { e.preventDefault(); handleNavigation(link.href); }}
+                      className={`text-sm font-medium transition-colors ${
+                        pathname === link.href 
+                          ? (theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600')
+                          : (theme === 'dark' ? 'hover:text-indigo-400' : 'hover:text-indigo-600')
+                      }`}
+                    >
+                      {link.name}
+                    </a>
+                  ))}
+                </div>
               </div>
-            ) : searchQuery.length > 0 ? (
-              <p className="text-center mt-8 opacity-70">No markets found for "{searchQuery}".</p>
-            ) : (
-              <p className="text-center mt-8 opacity-70">Start typing to search markets.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ---------- NAVBAR ---------- */}
-      <nav className={`sticky top-0 z-50 ${theme === "dark" ? "bg-black/95 text-white shadow-lg border-b border-white/10" : "bg-white/95 text-black shadow-md border-b border-black/10"} backdrop-blur-sm px-4 sm:px-8`}>
-        <div className="flex items-center justify-between max-w-7xl mx-auto py-3">
-          {/* LEFT: Logo + Tabs + Desktop Search */}
-          <div className="flex items-center gap-6 flex-1">
-            <button className="p-2 sm:hidden rounded-lg transition-colors hover:opacity-80" onClick={() => setIsMenuOpen(true)} aria-label="Open menu">
-              <Menu className="w-6 h-6" />
-            </button>
-
-            <div className="hidden md:flex items-center gap-2 cursor-pointer flex-shrink-0" onClick={() => handleTabClick("home")}>
-              <Crown className="w-7 h-7 text-amber-600" />
-              <span className="text-2xl sm:text-3xl font-semibold">
-                <span className="font-extrabold">Mocawin</span>
-              </span>
             </div>
 
-            <div className="hidden md:flex items-center gap-6 flex-shrink-0">
-              {["home", "market", "My Predictions"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => handleTabClick(tab)}
-                  className={`transition-opacity text-sm sm:text-base pb-1 ${
-                    currentActiveTab.toLowerCase() === tab.toLowerCase()
-                      ? "font-bold opacity-100 border-b-2 border-amber-600"
-                      : "font-semibold opacity-70 hover:opacity-90"
-                  }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
+            {/* Center: Logo for Mobile */}
+            <div className="md:hidden">
+              <a href="/" className="flex items-center space-x-2">
+                <Crown className={`w-8 h-8 ${theme === 'dark' ? 'text-indigo-500' : 'text-indigo-600'}`} />
+                <span className="text-2xl font-bold">Mocawin</span>
+              </a>
             </div>
 
-            <div className="relative hidden md:block max-w-[400px] w-full flex-1" ref={desktopSearchRef}>
-              <div className="flex items-center">
-                <Search className={`absolute left-3 w-4 h-4 ${theme === "dark" ? "text-white/50" : "text-black/50"}`} />
+            {/* Right Side: Search, Login/User Dropdown */}
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="relative hidden md:block" ref={desktopSearchRef}>
                 <input
                   type="text"
-                  placeholder="Search markets..."
+                  placeholder="Search..."
                   value={searchQuery}
-                  onChange={handleDesktopSearchChange}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsDesktopSearchOpen(true)}
-                  className={`pl-10 pr-10 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 w-full transition-colors ${
-                    theme === "dark"
-                      ? "bg-black border-white/20 text-white focus:ring-amber-600"
-                      : "bg-white border-black/20 text-black focus:ring-amber-600"
-                  }`}
+                  className={`w-48 lg:w-64 py-2 pl-10 pr-4 text-sm rounded-full transition-all duration-300 ${theme === 'dark' ? 'bg-slate-800 focus:bg-slate-700 border-transparent focus:border-indigo-500 text-white' : 'bg-slate-100 focus:bg-white border-slate-200 focus:border-indigo-500 text-black'} focus:outline-none`}
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full opacity-70 hover:opacity-100"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                {isDesktopSearchOpen && searchQuery && (
+                  <div className={`absolute top-full mt-2 w-full rounded-xl shadow-lg p-2 z-50 max-h-80 overflow-y-auto ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    {filteredResults.length > 0 ? (
+                      filteredResults.map((p) => (
+                        <div key={p.id} className={`p-2 rounded-lg cursor-pointer ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} onClick={() => setIsDesktopSearchOpen(false)}>
+                          <h3 className="font-semibold text-sm">{p.title}</h3>
+                          <span className="text-xs text-slate-400">Volume: {p.volume}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-sm py-3 text-slate-400">No results.</p>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {isDesktopSearchOpen && searchQuery.length > 0 && (
-                <div className={`absolute left-0 mt-2 w-full rounded-xl shadow-2xl p-3 z-50 max-h-80 overflow-y-auto ${theme === "dark" ? "bg-black border border-white/10" : "bg-white border border-black/10"}`}>
-                  {filteredResults.length > 0 ? (
-                    <div className="flex flex-col gap-2">
-                      {filteredResults.map((p) => (
-                        <div
-                          key={p.id}
-                          className={`rounded-lg p-2 transition-all cursor-pointer ${theme === "dark" ? "hover:bg-white/5" : "hover:bg-black/5"}`}
-                          onClick={() => {
-                            setSearchQuery("");
-                            setIsDesktopSearchOpen(false);
-                          }}
-                        >
-                          <h3 className="font-semibold text-sm">{p.title}</h3>
-                          <span className="text-xs opacity-70">Volume: {p.volume}</span>
+              <button onClick={() => setIsSearchModalOpen(true)} className={`md:hidden p-2 -mr-2 rounded-full ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}>
+                <Search className="w-5 h-5" />
+              </button>
+
+              {isLoggedIn ? (
+                <div className="relative" ref={dropdownRef}>
+                  <button onClick={() => setIsDropdownOpen((prev) => !prev)} className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-200 hover:bg-slate-300'}`}>
+                    <User className={`w-5 h-5 ${theme === 'dark' ? 'text-white' : 'text-slate-600'}`} />
+                  </button>
+                  {isDropdownOpen && (
+                     <div className={`absolute right-0 mt-2 w-72 origin-top-right rounded-2xl shadow-lg z-50 p-4 ${theme === 'dark' ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+                      <div className="flex items-center space-x-4 mb-4">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${theme === 'dark' ? 'bg-indigo-500' : 'bg-indigo-600'}`}>
+                          <User className="w-6 h-6 text-white" />
                         </div>
-                      ))}
+                        <div>
+                          <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Wallet Address</p>
+                          <p className="text-sm font-semibold">{userAddress?.slice(0, 6)}...{userAddress?.slice(-4)}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <a href="/profile" onClick={(e) => { e.preventDefault(); handleNavigation('/profile'); setIsDropdownOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors text-sm font-medium ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                          <span>Profile</span>
+                          <UserCircle className="w-5 h-5 text-slate-400" />
+                        </a>
+                        <button onClick={toggleTheme} className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors text-sm font-medium ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                          <span>Theme</span>
+                          {theme === 'light' ? <Moon className="w-5 h-5 text-slate-400" /> : <Sun className="w-5 h-5 text-slate-400" />}
+                        </button>
+                        <button onClick={handleLogout} className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors text-sm font-medium ${theme === 'dark' ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-100 text-red-500'}`}>
+                          <span>Logout</span>
+                          <LogOut className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-center text-sm py-4 opacity-70">No results for "{searchQuery}".</p>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* RIGHT SIDE: User actions */}
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsMobileSearchOpen(true)} className={`p-2 rounded-lg md:hidden transition-colors hover:opacity-80 ${theme === "dark" ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"}`} aria-label="Search">
-              <Search className="w-5 h-5" />
-            </button>
-
-            <div className="relative md:hidden">
-              {isLoggedIn ? (
-                <button onClick={() => setIsDropdownOpen((prev) => !prev)} className={`p-2 rounded-lg border transition-colors hover:opacity-80 ${theme === "dark" ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"}`} aria-label="User menu mobile">
-                  <User className="w-5 h-5" />
-                </button>
               ) : (
-                <button onClick={handleLogin} disabled={isLoggingIn} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-colors hover:opacity-80 disabled:opacity-50 text-sm font-semibold ${theme === "dark" ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"}`} aria-label="Login mobile">
-                  {isLoggingIn ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <User className="w-5 h-5" />}
-                  <span>{isLoggingIn ? "Logging In..." : "Login"}</span>
+                <button
+                  onClick={handleLogin}
+                  disabled={isLoggingIn}
+                  className={`flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full text-white transition-colors ${theme === 'dark' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-700 hover:bg-indigo-800'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {isLoggingIn ? 'Connecting...' : <span className="hidden md:block">Login / Sign Up</span>}
+                  {isLoggingIn || <span className="md:hidden">Login</span>}
                 </button>
               )}
-            </div>
-
-            <div className="relative hidden md:block" ref={dropdownRef}>
-              {isLoggedIn ? (
-                <button onClick={() => setIsDropdownOpen((prev) => !prev)} className={`px-3 py-2 rounded-lg border transition-colors hover:opacity-80 ${theme === "dark" ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"}`} aria-label="User menu">
-                  <User className="w-5 h-5" />
-                </button>
-              ) : (
-                <button onClick={handleLogin} disabled={isLoggingIn} className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors hover:opacity-80 disabled:opacity-50 text-sm font-semibold ${theme === "dark" ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"}`}>
-                  {isLoggingIn ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <User className="w-5 h-5" />}
-                  <span>Login</span>
-                </button>
-              )}
-
-              {/* Desktop Dropdown */}
-              {isLoggedIn && isDropdownOpen && (
-                <div className={`absolute right-0 mt-2 w-64 rounded-xl shadow-2xl p-4 z-50 ${theme === "dark" ? "bg-black border border-white/10" : "bg-white border border-black/10"}`}>
-                  <div className={`flex items-center gap-2 p-2 rounded-lg mb-3 ${theme === "dark" ? "bg-white/5" : "bg-black/5"}`}>
-                    <Settings className="w-5 h-5 opacity-60 flex-shrink-0" />
-                    <span className="text-sm font-medium truncate">
-                      {userAddress?.slice(0, 6)}...{userAddress?.slice(-4)}
-                    </span>
-                  </div>
-
-                  {/* Profile */}
-                  <button
-                    onClick={() => {
-                      handleProfileClick();
-                      setIsDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-sm font-medium hover:opacity-90 ${theme === "dark" ? "hover:bg-white/5" : "hover:bg-black/5"}`}
-                  >
-                    <span>Profile</span>
-                    <UserCircle className="w-5 h-5" />
-                  </button>
-
-                  <button
-                    onClick={toggleTheme}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-sm font-medium hover:opacity-90 mt-1 ${theme === "dark" ? "hover:bg-white/5" : "hover:bg-black/5"}`}
-                  >
-                    <span>Theme</span>
-                    {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-sm font-medium hover:opacity-90 mt-1 ${theme === "dark" ? "hover:bg-white/5 text-red-400" : "hover:bg-black/5 text-red-600"}`}
-                  >
-                    <span>Logout</span>
-                    <LogOut className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile Dropdown - UPDATED HERE */}
-            {isLoggedIn && isDropdownOpen && (
-              <div
-                id="mobile-dropdown"
-                ref={mobileDropdownContentRef}
-                className={`absolute right-4 top-[60px] w-64 rounded-xl shadow-2xl p-4 z-50 md:hidden ${theme === "dark" ? "bg-black border border-white/10" : "bg-white border border-black/10"}`}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                {/* Tampilan Wallet Pengguna ditambahkan di sini */}
-                <div className={`flex items-center gap-2 p-2 rounded-lg mb-3 ${theme === "dark" ? "bg-white/5" : "bg-black/5"}`}>
-                  <Settings className="w-5 h-5 opacity-60 flex-shrink-0" />
-                  <span className="text-sm font-medium truncate">
-                    {userAddress?.slice(0, 6)}...{userAddress?.slice(-4)}
-                  </span>
-                </div>
-                {/* Akhir Tampilan Wallet Pengguna */}
-                
-                {/* Profile */}
-                <button
-                  onClick={() => {
-                    handleProfileClick();
-                    setIsDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-sm font-medium hover:opacity-90 ${theme === "dark" ? "hover:bg-white/5" : "hover:bg-black/5"}`}
-                >
-                  <span>Profile</span>
-                  <UserCircle className="w-5 h-5" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    toggleTheme();
-                    setIsDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-sm font-medium hover:opacity-90 mt-1 ${theme === "dark" ? "hover:bg-white/5" : "hover:bg-black/5"}`}
-                >
-                  <span>Theme</span>
-                  {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                </button>
-
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-sm font-medium hover:opacity-90 mt-1 ${theme === "dark" ? "hover:bg-white/5 text-red-400" : "hover:bg-black/5 text-red-600"}`}
-                >
-                  <span>Logout</span>
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* FLASH NEWS */}
-        <div className={`flex items-center rounded-lg px-3 py-1 mb-2 text-xs border overflow-hidden whitespace-nowrap w-full mx-auto ${theme === "dark" ? "bg-amber-600/10 border-amber-600 text-amber-500" : "bg-amber-100 border-amber-700 text-amber-800"}`}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget.querySelector(".animate-ticker") as HTMLElement;
-            if (el) el.style.animationPlayState = "paused";
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget.querySelector(".animate-ticker") as HTMLElement;
-            if (el) el.style.animationPlayState = "running";
-          }}
-        >
-          <Zap className="w-4 h-4 mr-1.5 flex-shrink-0" />
-          <div className="ticker-wrap w-full overflow-hidden">
-            <div className="ticker-content inline-block animate-ticker">
-              {confirmedNews.map((news, i) => (
-                <span key={`n-${i}`} className="mr-8 font-medium hover:underline cursor-pointer">{news}</span>
-              ))}
-              {confirmedNews.map((news, i) => (
-                <span key={`dup-${i}`} className="mr-8 font-medium hover:underline cursor-pointer">{news}</span>
-              ))}
             </div>
           </div>
         </div>
       </nav>
 
-      {/* MOBILE MENU SIDEBAR - NO PROFILE (TIDAK BERUBAH) */}
-      <div className={`fixed inset-0 z-[100] transition-transform duration-300 sm:hidden ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="absolute inset-0 bg-black transition-all duration-300" style={{ backgroundColor: `rgba(0,0,0,${backdropOpacity})`, backdropFilter: `blur(${backdropBlur}px)` }} onClick={() => setIsMenuOpen(false)} aria-hidden="true" />
+      {/* Sidebar (Mobile Menu) */}
+        <div
+        className={`fixed inset-0 z-50 md:hidden transition-opacity duration-300 ease-in-out ${
+          isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}>
 
-        <div className={`relative w-64 h-full p-5 ${theme === "dark" ? "bg-black" : "bg-white"} shadow-xl`}>
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2">
-              <Crown className="w-7 h-7 text-amber-600" />
-              <span className="text-xl font-semibold">
-                <span className="font-extrabold">Mocawin</span>
-              </span>
-            </div>
-            <button onClick={() => setIsMenuOpen(false)} className={`p-2 rounded-lg border transition-colors hover:opacity-80 ${theme === "dark" ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"}`}>
-              <X className="w-5 h-5" />
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => setIsMenuOpen(false)}
+        ></div>
+
+        <div
+          className={`relative w-80 h-full p-6 text-slate-200 ${
+            theme === 'dark' ? 'bg-slate-900' : 'bg-gray-800'
+          } transition-transform duration-300 ease-in-out transform ${
+            isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center mb-8">
+            <a href="/" className="flex items-center space-x-2">
+              <Crown className={`w-8 h-8 ${theme === 'dark' ? 'text-indigo-500' : 'text-indigo-500'}`} />
+              <span className="text-2xl font-bold">Mocawin</span>
+            </a>
+            <button onClick={() => setIsMenuOpen(false)} className={`p-2 rounded-full ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-700'}`}>
+              <X className="w-6 h-6" />
             </button>
           </div>
-
-          <div className="flex flex-col gap-4">
-            {["home", "market", "My Predictions"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  handleTabClick(tab);
-                  setIsMenuOpen(false);
-                }}
-                className={`text-left text-lg py-2 transition-colors ${
-                  currentActiveTab.toLowerCase() === tab.toLowerCase()
-                    ? theme === "dark"
-                      ? "text-amber-500 font-bold border-l-4 border-amber-500 pl-2"
-                      : "text-amber-700 font-bold border-l-4 border-amber-700 pl-2"
-                    : "opacity-70 hover:opacity-100 font-medium pl-2"
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-
-            <hr className={`my-2 ${theme === "dark" ? "border-white/10" : "border-black/10"}`} />
-            {/* No Profile here */}
-          </div>
+          <nav className="flex flex-col space-y-3">
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={(e) => { e.preventDefault(); handleNavigation(link.href); }}
+                  className={`flex items-center space-x-3 p-3 rounded-lg font-medium transition-colors ${
+                    pathname === link.href 
+                      ? (theme === 'dark' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-500/20 text-indigo-300') 
+                      : (theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-700')
+                  }`}>
+                  <Icon className="w-5 h-5" />
+                  <span>{link.name}</span>
+                </a>
+              );
+            })}
+          </nav>
         </div>
       </div>
 
-      {/* Ticker keyframes */}
-      <style jsx global>{`
-        @keyframes ticker {
-          0% { transform: translate3d(0, 0, 0); }
-          100% { transform: translate3d(-50%, 0, 0); }
-        }
-        .animate-ticker {
-          animation: ticker 25s linear infinite;
-          padding-right: 100%;
-          white-space: nowrap;
-        }
-        .ticker-content { display: inline-block; }
-      `}</style>
+      {/* Search Modal (Mobile) */}
+      {isSearchModalOpen && (
+        <div className="fixed inset-0 z-50 md:hidden bg-gray-900/90 backdrop-blur-sm" onClick={() => setIsSearchModalOpen(false)}>
+          <div className="relative w-full p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search markets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                className={`w-full py-3 pl-11 pr-10 text-base rounded-full ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-black'} focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <button onClick={() => setIsSearchModalOpen(false)} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {searchQuery && (
+              <div className="mt-4 max-h-[70vh] overflow-y-auto rounded-lg">
+                {filteredResults.length > 0 ? (
+                  filteredResults.map((p) => (
+                    <div key={p.id} className={`p-3 mb-2 rounded-lg cursor-pointer ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700' : 'bg-white hover:bg-slate-100 text-black'}`} onClick={() => setIsSearchModalOpen(false)}>
+                      <h3 className="font-semibold">{p.title}</h3>
+                      <span className="text-sm text-slate-400">Volume: {p.volume}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-lg py-6 text-slate-400">No results found.</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
