@@ -9,9 +9,14 @@ import path from 'path';
 function getPrivateKey(): string {
   // Di Vercel/Produksi, kunci akan ada di variabel lingkungan.
   if (process.env.PRIVATE_KEY_BASE64) {
-    // Dekode string Base64 kembali ke format PEM
-    return Buffer.from(process.env.PRIVATE_KEY_BASE64, 'base64').toString('utf-8');
+    // Bersihkan variabel lingkungan dari spasi putih (termasuk baris baru)
+    // yang mungkin telah ditambahkan selama penyalinan-penempelan.
+    const cleanedBase64 = process.env.PRIVATE_KEY_BASE64.replace(/\s/g, '');
+    
+    // Dekode string Base64 yang telah dibersihkan kembali ke format PEM
+    return Buffer.from(cleanedBase64, 'base64').toString('utf-8');
   }
+
   // Untuk pengembangan lokal, baca file secara langsung.
   try {
     const privateKeyPath = path.resolve('./private.key');
