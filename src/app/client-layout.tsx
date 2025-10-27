@@ -195,6 +195,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
+  const [jwt, setJwt] = useState<string | null>(null);
   const [currentEnv] = useState<BUILD_ENV_TYPE>(BUILD_ENV.SANDBOX);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default for server
   const [activeTab, setActiveTab] = useState('home');
@@ -255,6 +256,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       } else if (data.event === 'logged_out') {
         setIsLoggedIn(false);
         setUserAddress(null);
+        setJwt(null);
       }
     };
 
@@ -270,6 +272,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     setIsLoggingIn(true);
     try {
       await airService.login();
+      const response = await fetch('/api/auth/login', { method: 'POST' });
+      const data = await response.json();
+
+      if (response.ok) {
+        setJwt(data.token);
+        console.log("JWT acquired:", data.token);
+      } else {
+        throw new Error(data.error || 'Failed to fetch JWT');
+      }
     } catch (e) {
       console.error('Login error:', e);
     } finally {
@@ -280,6 +291,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const handleLogout = async () => {
     try {
       await airService.logout();
+      setJwt(null);
     } catch (e) {
       console.error('Logout error:', e);
     }
@@ -301,6 +313,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     setSearchQuery,
     predictions,
     confirmedNews,
+    jwt,
   };
 
   return (

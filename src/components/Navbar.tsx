@@ -131,7 +131,6 @@ export default function Navbar() {
             <div className="md:hidden">
               <a href="/" className="flex items-center space-x-2">
                 <Crown className={`w-8 h-8 ${theme === 'dark' ? 'text-indigo-500' : 'text-indigo-600'}`} />
-                <span className="text-2xl font-bold">Mocawin</span>
               </a>
             </div>
 
