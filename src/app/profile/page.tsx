@@ -16,22 +16,11 @@ import {
   Loader2,
   LogOut,
   Key,
-  Verified,
-  ExternalLink,
 } from 'lucide-react';
 import ClaimDetailCard from '../../components/ClaimDetailCard';
 import { useAppContext } from '../../context/AppContext';
 import { type AirUserDetails } from '@mocanetwork/airkit';
-import {
-  getStatusColor,
-  getStatusBgColor,
-  getStatusIcon,
-  getStatusDescription,
-  getStatusLabel,
-  isVerified,
-  isVerificationPending,
-  isVerificationFailed
-} from '../../utils/verificationStatus';
+
 
 export interface ClaimHistory {
   id: string;
@@ -45,96 +34,6 @@ export interface ClaimHistory {
   winningSide: 'Yes' | 'No';
 }
 
-// ====================================================================
-// NEW: Verification Result Type Definition (Added for type safety)
-// ====================================================================
-interface VerificationResult {
-  status: string;
-  verificationUrl?: string;
-  verificationRequestId?: string;
-  proofResult?: any; // You can make this more specific if the structure of proofResult is known
-}
-
-// ====================================================================
-// Verification Modal Component
-// ====================================================================
-
-interface VerificationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  // FIX: Updated type from 'any' to 'VerificationResult | null'
-  result: VerificationResult | null;
-  theme: 'light' | 'dark';
-}
-
-const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onClose, result, theme }) => {
-  if (!isOpen || !result) return null;
-
-  const status = result.status || 'Unknown';
-  const isComingSoon = status === 'ComingSoon';
-  const StatusIcon = getStatusIcon(status);
-  const statusColor = getStatusColor(status);
-  const statusBgColor = getStatusBgColor(status);
-  const statusDescription = isComingSoon ? 'This feature will be available soon.' : getStatusDescription(status);
-  const verified = isVerified(status);
-  const pending = isVerificationPending(status);
-  const failed = isVerificationFailed(status);
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div 
-        className={`w-full max-w-md rounded-2xl p-8 shadow-2xl transition-all duration-300 transform scale-100 ${theme === 'dark' ? 'bg-gray-800 text-slate-100' : 'bg-white text-slate-800'}`}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="text-center">
-          <div className={`w-16 h-16 mx-auto mb-4 rounded-full ${statusBgColor} flex items-center justify-center`}>
-            <StatusIcon className={`w-10 h-10 ${statusColor}`} />
-          </div>
-          <h3 className="text-2xl font-bold mb-3">
-            {isComingSoon ? 'Stay tuned.' : (verified ? 'Verification Successful!' : pending ? 'Verification in Progress' : failed ? 'Verification Failed' : 'Verification Status')}
-          </h3>
-          <p className={`${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'} mb-2`}>
-            {statusDescription}
-          </p>
-          <div className={`inline-block px-4 py-2 rounded-full font-bold text-sm mt-2 ${statusBgColor} ${statusColor}`}>
-            {isComingSoon ? 'Coming Soon' : getStatusLabel(status)}
-          </div>
-        </div>
-
-        {verified && result.proofResult ? (
-          <div className={`mt-6 p-4 rounded-lg text-sm font-mono break-all ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-             <span className="font-semibold block mb-2">Proof Result:</span>
-             <p className="text-xs overflow-auto max-h-40">{JSON.stringify(result.proofResult, null, 2)}</p>
-          </div>
-        ) : null}
-        
-        <div className="flex flex-col gap-3 mt-6">
-          {pending && result.verificationUrl && (
-            <a
-              href={result.verificationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all duration-300"
-            >
-              Complete Verification <ExternalLink className="w-4 h-4" />
-            </a>
-          )}
-          <button
-            onClick={onClose}
-            className={`px-5 py-3 rounded-lg font-bold transition-all ${theme === 'dark' ? 'text-slate-300 hover:bg-gray-700/50' : 'text-slate-700 hover:bg-gray-200/50'}`}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ====================================================================
-// AccountDetailsContent Component
-// ====================================================================
-
 const AccountDetailsContent: React.FC = () => {
   const { airService, userAddress, handleLogout, theme } = useAppContext();
 
@@ -142,11 +41,6 @@ const AccountDetailsContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isMfaSettingUp, setIsMfaSettingUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
-  // FIX: Updated the type from 'any' to 'VerificationResult | null'
-  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
-  const [isVerificationModalOpen, setVerificationModalOpen] = useState(false);
-  const [pollIntervalId, setPollIntervalId] = useState<NodeJS.Timeout | null>(null);
 
   const fetchUserInfo = useCallback(async () => {
     if (!airService) return;
@@ -179,35 +73,6 @@ const AccountDetailsContent: React.FC = () => {
     }
   }, [airService, fetchUserInfo]);
 
-  // ====================================================================
-  // Core Verification Function (Temporarily disabled)
-  // ====================================================================
-
-  const handleRequestVerification = async () => {
-    // The SDK integration is not ready yet. Keep the button, but show a "Coming Soon" modal.
-    if (!userInfo?.user.abstractAccountAddress) {
-      setError('No abstract account address available.');
-      return;
-    }
-
-    // Open a modal informing the user this feature is coming soon.
-    setIsVerifying(false);
-    setVerificationResult({
-      status: 'ComingSoon',
-      proofResult: null,
-    });
-    setVerificationModalOpen(true);
-  };
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollIntervalId) {
-        clearInterval(pollIntervalId);
-      }
-    };
-  }, [pollIntervalId]);
-
   const handleSetupMfa = async () => {
     if (!airService || isMfaSettingUp || !userInfo?.user.abstractAccountAddress) return;
 
@@ -232,7 +97,7 @@ const AccountDetailsContent: React.FC = () => {
       </div>
     );
   }
-
+  
   if (error && !userInfo) {
     return <p className={`p-6 rounded-lg ${theme === 'dark' ? 'text-red-400 bg-red-500/10' : 'text-red-700 bg-red-500/10'}`}>{error}</p>;
   }
@@ -243,24 +108,19 @@ const AccountDetailsContent: React.FC = () => {
 
   const { user } = userInfo;
   const isMfaActive = user.isMFASetup;
-  const currentStatus = verificationResult?.status || 'Unknown';
-  const verified = isVerified(currentStatus);
-  const StatusIcon = getStatusIcon(currentStatus);
-  const statusColor = getStatusColor(currentStatus);
-  const statusBgColor = getStatusBgColor(currentStatus);
 
   const DetailRow = ({ icon: Icon, label, value, isAddress = false }: any) => (
-    <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} last:border-b-0`}>
+    <div className="flex items-center justify-between py-4 border-b last:border-b-0">
       <div className="flex items-center gap-4">
-        <Icon className={`w-6 h-6 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`} />
-        <span className={`font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{label}</span>
+        <Icon className={`w-6 h-6 ${label === 'Abstract Account Address' ? (theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600') : 'text-gray-400'}`} />
+        <div>
+          <p className="text-sm text-slate-500">{label}</p>
+          <p className={`font-mono text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{value || '-'}</p>
+        </div>
       </div>
-      <span className={`font-mono text-sm sm:text-right mt-2 sm:mt-0 ${isAddress ? 'break-all' : ''} ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-        {value || "N/A"}
-      </span>
     </div>
   );
-
+  
   return (
     <>
       <div className="space-y-8">
@@ -275,72 +135,49 @@ const AccountDetailsContent: React.FC = () => {
           />
           <DetailRow icon={Mail} label="Email" value={user.email} />
 
-          {/* Verification Status Row */}
-          <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex items-center gap-4">
-              <StatusIcon className={`w-6 h-6 ${statusColor}`} />
-              <span className={`font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Verified Credentials</span>
-            </div>
-            <div className="flex items-center gap-4 mt-3 sm:mt-0">
-              <span className={`font-semibold px-3 py-1 rounded-full text-sm ${statusBgColor} ${statusColor}`}>
-                {getStatusLabel(currentStatus)}
-              </span>
-              <button
-                onClick={handleRequestVerification}
-                disabled={!user.abstractAccountAddress}
-                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed border-2 ${
-                  verified 
-                    ? (theme === 'dark' ? 'bg-green-500/10 border-green-500 text-green-400 hover:bg-green-500/20' : 'bg-green-500/10 border-green-500 text-green-600 hover:bg-green-500/20')
-                    : (theme === 'dark' ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 hover:bg-indigo-500/20' : 'bg-indigo-500/10 border-indigo-500 text-indigo-600 hover:bg-indigo-500/20')
-                }`}>
-                {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : (verified ? 'Re-verify (Coming Soon)' : 'Get Verified (Coming Soon)')}
-              </button>
-            </div>
-          </div>
-          
-          {/* MFA Row */}
+          {/* MFA Row (Reverted to original compact style) */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 last:border-b-0">
             <div className="flex items-center gap-4">
               <Fingerprint className={`w-6 h-6 ${isMfaActive ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`} />
-              <span className={`font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>Multi-Factor Authentication</span>
+              <div>
+                <span className={`font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>MFA</span>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{isMfaActive ? 'Enabled' : 'Not Enabled'}</p>
+              </div>
             </div>
             <div className="flex items-center gap-4 mt-3 sm:mt-0">
-              <span className={`font-semibold ${isMfaActive ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
-                {isMfaActive ? 'Enabled' : 'Disabled'}
-              </span>
               <button
                 onClick={handleSetupMfa}
                 disabled={isMfaSettingUp || !user.abstractAccountAddress}
                 className={`px-5 py-2 rounded-lg text-sm font-bold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed border-2 ${
-                  isMfaActive 
-                    ? (theme === 'dark' ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 hover:bg-indigo-500/20' : 'bg-indigo-500/10 border-indigo-500 text-indigo-600 hover:bg-indigo-500/20')
-                    : (theme === 'dark' ? 'bg-green-500/10 border-green-500 text-green-400 hover:bg-green-500/20' : 'bg-green-500/10 border-green-500 text-green-600 hover:bg-green-500/20')
-                }`}>
-                {isMfaSettingUp ? <Loader2 className="w-5 h-5 animate-spin" /> : (isMfaActive ? 'Update MFA' : 'Enable MFA')}
+                  isMfaActive ? (theme === 'dark' ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 hover:bg-indigo-500/20' : 'bg-indigo-500/10 border-indigo-500 text-indigo-600 hover:bg-indigo-500/20')
+                            : (theme === 'dark' ? 'bg-green-500/10 border-green-500 text-green-400 hover:bg-green-500/20' : 'bg-green-500/10 border-green-500 text-green-600 hover:bg-green-500/20')
+                }`}
+              >
+                {isMfaSettingUp ? <Loader2 className="w-5 h-5 animate-spin" /> : (isMfaActive ? 'Update MFA' : 'Set up MFA')}
               </button>
             </div>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-3 py-3 rounded-lg font-bold text-white bg-red-600 hover:bg-red-500 transition-all duration-300 transform hover:scale-105 border-2 border-red-500"
-        >
-          <LogOut className="w-5 h-5" />
-          Log Out
-        </button>
-        {error && <p className={`p-4 rounded-lg mt-4 ${theme === 'dark' ? 'text-red-400 bg-red-500/10' : 'text-red-700 bg-red-500/10'}`}>{error}</p>}
+        {/* Log Out button moved to the end of the main account details div for better grouping, similar to page - Copy.tsx */}
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-lg font-bold text-white bg-red-600 hover:bg-red-500 transition-all duration-300 transform hover:scale-105 border-2 border-red-500"
+          >
+            <LogOut className="w-5 h-5" />
+            Log Out
+          </button>
+        </div>
+        {/* Error message handling updated */}
+        {error && (
+          <p className={`p-6 rounded-lg ${theme === 'dark' ? 'text-red-400 bg-red-500/10' : 'text-red-700 bg-red-500/10'}`}>{error}</p>
+        )}
       </div>
-
-      <VerificationModal
-        isOpen={isVerificationModalOpen}
-        onClose={() => setVerificationModalOpen(false)}
-        result={verificationResult}
-        theme={theme}
-      />
     </>
   );
 };
 
+// ... (Rest of ClaimHistoryContent and ProfilePage components remain unchanged)
 const ClaimHistoryContent: React.FC<{ claimHistory: ClaimHistory[], setSelectedClaim: (claim: ClaimHistory | null) => void }> = ({ claimHistory, setSelectedClaim }) => {
   const { theme } = useAppContext();
 

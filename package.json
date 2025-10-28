@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@mocanetwork/air-credential-sdk": "^0.0.7-beta.1",
     "@mocanetwork/airkit": "^1.6.0",
     "@types/uuid": "^10.0.0",
     "jose": "^6.1.0",
